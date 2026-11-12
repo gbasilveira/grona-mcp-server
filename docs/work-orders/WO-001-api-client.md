@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Phase | P1 |
-| Status | READY |
+| Status | IN REVIEW |
 | Depends on | — |
 | Branch | `wo/001-client` |
 
@@ -16,10 +16,10 @@ Smoke: `node --version`. Verify `npm run typecheck` (server may not yet exist), 
 
 ## Objective and tasks
 
-- [ ] Implement `src/types.ts`, `src/schemas.ts`, `src/config.ts`, `src/client.ts` and focused tests.
-- [ ] Cover all 10 routes; exact original envelopes; separate Embed/mobile credentials and hosts.
-- [ ] Validate every request field and cross-field rules; export Zod request schemas for MCP.
-- [ ] Safe bounded retries, Retry-After seconds/date, timeout, network/gateway/envelope errors and redaction.
+- [x] Implement `src/types.ts`, `src/schemas.ts`, `src/config.ts`, `src/client.ts` and focused tests.
+- [x] Cover all 10 routes; exact original envelopes; separate Embed/mobile credentials and hosts.
+- [x] Validate every request field and cross-field rules; export Zod request schemas for MCP.
+- [x] Safe bounded retries, Retry-After seconds/date, timeout, network/gateway/envelope errors and redaction.
 
 ## Shared interface (coordinate changes with server executor)
 
@@ -46,4 +46,50 @@ Tests exercise every HTTP route, encoding/auth, no duplicate unsafe create, exte
 
 ## RESULT
 
-Pending.
+Implemented and ready for independent review.
+
+- Branch: `wo/001-client`; base: `e9650e7`.
+- New files: `src/types.ts`, `src/schemas.ts`, `src/config.ts`, `src/client.ts`,
+  `tests/client.test.ts`, `tests/validation.test.ts`.
+- All ten documented operations use their original route, method, fields and response
+  envelope. Separate mobile credentials never fall back to Embed credentials.
+- Responses preserve future enum values and extra fields. JSON/envelope shape checks
+  reject malformed successes without leaking raw gateway bodies.
+- Credentials checked on demand; config defaults support offline helper construction.
+- Safe reads, link/verify/mobile calls and creates with externalId retry transient
+  errors; PATCH/DELETE never automatically replay (including status changes).
+  Retry-After supports seconds and HTTP dates; waits beyond configured budget return
+  actionable errors rather than retrying too soon. Timeouts cover response body reads.
+- Local validation covers declared field types, syntax, limits, nonempty patches,
+  create applicability, split sums, page-list normalization, and multi-page URL/slug.
+  Update applicability requiring existing campaign state remains enforced by Grona.
+- Additional independent-review fixes: whitespace-only credentials become unconfigured;
+  dot-only path ids fail locally with advice to list campaigns and use their Grona id;
+  raw backslash paths are rejected before URL canonicalization can hide them.
+
+Verification:
+
+```text
+npm run typecheck
+> tsc --noEmit
+(exit 0)
+
+npm test -- tests/client.test.ts tests/validation.test.ts
+Test Files  2 passed (2)
+Tests       77 passed (77)
+(exit 0)
+```
+
+Sabotage checks (restored before final verification):
+
+1. Forced creates without externalId to retry: exit 1, expected unsafe-create test failed
+   (1 failed / 31 passed in client suite).
+2. Replaced mobile credential selector with Embed credential: exit 1, all-route isolation,
+   header-mode isolation and missing-mobile-key tests failed (3 failed / 29 passed).
+
+Deviations: none beyond explicitly permitted choice to never auto-retry mutations.
+No live credentials or authenticated production requests were used. No source snapshot,
+server, workflows, package or root documentation files were changed.
+
+Follow-up: root runs integrated MCP protocol and packaging checks under WO-003.
+
