@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Original authors and maintainers: αIAt (https://aiat.pt) and Guilherme da Silveira (gbasilveira@gmail.com).
-# License: MIT — see LICENSE at the repository root.
+# License: MIT — see LICENSE-MIT at the repository root.
 # Detects interrupted WOs (rate limit 429, crash, dead session). Read-only; prints a verdict per WO.
 # Usage: scripts/wo-watchdog.sh [minutes_without_commit=20]
 set -uo pipefail

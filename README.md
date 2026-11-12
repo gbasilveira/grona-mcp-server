@@ -86,4 +86,10 @@ The [verification record](docs/VERIFICATION.md) includes the final checks and li
 
 Workorder management is bootstrapped from [`~/trabalho/foundry-protocol`](../../foundry-protocol/README.md), with the queue in [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) and results under [docs/work-orders](docs/work-orders).
 
-MIT for this implementation. Third-party Grona reference material retains Grona's terms; see [LICENSE](LICENSE).
+Copyright (c) 2026 Guilherme da Silveira and contributors.
+
+This implementation is free software under the GNU General Public License, version 3 or (at your option) any later version (SPDX: `GPL-3.0-or-later`). It is provided without warranty; see [LICENSE](LICENSE).
+
+Existing MIT notices are preserved in [LICENSE-MIT](LICENSE-MIT). Foundry scripts marked MIT retain that license. Previously released MIT versions retain their permissions.
+
+Grona reference material in `docs/upstream`, including the proprietary API contract, is excluded from this GPL grant and remains subject to [Grona's terms](https://www.grona.ai/terms). Redistribution permission for that material must be established separately. This license grants no rights to Grona's service or branding.

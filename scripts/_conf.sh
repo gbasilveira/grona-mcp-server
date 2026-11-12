@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Original authors and maintainers: αIAt (https://aiat.pt) and Guilherme da Silveira (gbasilveira@gmail.com).
-# License: MIT — see LICENSE at the repository root.
+# License: MIT — see LICENSE-MIT at the repository root.
 # Read by the foundry-protocol scripts: loads docs/foundry.conf (KEY=value, without executing the file).
 # Usage: source "$(dirname "$0")/_conf.sh"   (defines ROOT, BASE, GATE_PREFIX, VERIFY_CMD, INSTALL_CMD, VERIFY_TMPDIR, GATE_MODE; cd "$ROOT")
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

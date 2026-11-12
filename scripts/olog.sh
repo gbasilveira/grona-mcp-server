@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Original authors and maintainers: αIAt (https://aiat.pt) and Guilherme da Silveira (gbasilveira@gmail.com).
-# License: MIT — see LICENSE at the repository root.
+# License: MIT — see LICENSE-MIT at the repository root.
 # Usage: scripts/olog.sh <TYPE> "text"
 #   TYPE: LAUNCH|RESULT|REVIEW|MERGE|DECISION|WATCHDOG|RELAUNCH|USER|GATE|NOTE
 # Curated, append-only, committed log: who did what, to whom, with what result.

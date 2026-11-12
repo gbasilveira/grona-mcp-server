@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Complete Grona API MCP server with agent workflows",
   "type": "module",
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=22.12.0"
   },
