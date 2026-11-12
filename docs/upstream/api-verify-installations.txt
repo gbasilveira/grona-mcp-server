@@ -1,0 +1,357 @@
+Verify installations | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+Check a page
+What the check looks for
+Statuses
+Host matching
+Why a working install can read absent
+Next steps
+On this page
+Overview
+Check a page
+What the check looks for
+Statuses
+Host matching
+Why a working install can read absent
+Next steps
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+API reference
+/
+Guides
+Verify installations
+The verify-script endpoint loads one of your pages and reports whether your workspace’s Grona Embed snippet is on it. Call it from your backend before you set a campaign live, or in your own onboarding flow to tell a user their install is working. This page covers the request, what the check looks for, how Grona matches a URL to your website, and the cases where a working install reads
+absent
+.
+Check a page
+Section titled “Check a page”
+curl
+Node
+Terminal window
+curl
+https://services.grona.ai/api/public/v1/websites/verify-script
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"url": "https://shop.example.com/"}'
+// verify.mjs (Node 18 or later)
+const
+res
+=
+await
+fetch
+(
+'https://services.grona.ai/api/public/v1/websites/verify-script'
+, {
+method:
+'POST'
+,
+headers:
+{
+Authorization:
+`Bearer ${
+process.env.
+GRONA_SECRET_KEY
+}`
+,
+'Content-Type'
+:
+'application/json'
+,
+},
+body:
+JSON
+.
+stringify
+({
+url:
+'https://shop.example.com/'
+}),
+});
+const
+{
+data
+}
+=
+await
+res.
+json
+();
+console.
+log
+(data.
+url
+, data.script.
+status
+, data.script.
+checkedAt
+);
+The call waits for the check to finish, then returns the page it checked and the result:
+{
+"data"
+: {
+"url"
+:
+"https://shop.example.com/"
+,
+"script"
+: {
+"status"
+:
+"present"
+,
+"checkedAt"
+:
+"2026-10-20T09:28:43.162Z"
+}
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+url
+must be a full
+http
+or
+https
+page URL. Anything else returns
+400 invalid_request
+.
+What the check looks for
+Section titled “What the check looks for”
+Grona loads the page the way a first-time visitor’s browser would, and looks in
+<head>
+, then in
+<body>
+, for the
+Grona Embed snippet
+. A
+<script>
+element counts when either of these is true:
+its
+data-grona-embed-script
+attribute holds your workspace id;
+its
+src
+is on
+personalize.grona.ai
+and its path ends with
+/workspaces/<your workspace id>.js
+. A query string does not matter.
+The workspace is the one your key belongs to, so a snippet from a different workspace reads
+absent
+. The script on the Website pages matches neither rule, so a page that has only that script reads
+absent
+too.
+The check covers only the page you send, not the rest of the site. It also does not check:
+that the anti-flicker line is present;
+that the snippet is in
+<head>
+, or that it keeps its
+async
+attribute;
+that the script loaded successfully or ran;
+that your consent setup allows it to run.
+Statuses
+Section titled “Statuses”
+The verify-script endpoint always returns a finished result:
+script.status
+Meaning
+present
+The snippet was found on the page.
+absent
+The snippet was not found, or Grona could not load the page.
+A campaign also carries a
+script
+object, which reports the check of the campaign’s website. It can be in two more states, because that check runs in the background:
+script.status
+Meaning
+checkedAt
+checking
+A check is running. New campaigns start here.
+null
+until a check has completed
+present
+The snippet was found.
+When the check completed
+absent
+The snippet was not found, or Grona could not load the page.
+When the check completed
+unknown
+No check is running and none has completed. New campaigns read
+checking
+, not
+unknown
+.
+null
+Before you set a campaign live, call verify-script for its page rather than relying on the campaign’s stored status.
+Host matching
+Section titled “Host matching”
+Grona works out which website a URL belongs to in one way, for both a campaign’s
+url
+and the
+url
+you send to verify-script. It reduces the URL to its host and ignores:
+the path;
+a trailing slash;
+a leading
+www.
+;
+letter case.
+URL
+Website
+https://shop.example.com/
+shop.example.com
+https://www.shop.example.com/dairy/whole-milk
+shop.example.com
+https://Shop.Example.com
+shop.example.com
+https://blog.example.com/
+blog.example.com
+, a different website
+A campaign’s
+domain
+field holds the website’s origin, taken from its
+url
+, such as
+https://shop.example.com
+. Host matching only decides which website a URL belongs to. Grona checks the URL you send, path included, so check a page the campaign will run on. It does not widen a campaign’s targeting either: a campaign on
+https://shop.example.com/
+does not run on
+https://www.shop.example.com/
+.
+Why a working install can read absent
+Section titled “Why a working install can read absent”
+Some setups hide the snippet from the check even though visitors get Grona.
+The website script is installed instead.
+The check finds only the Grona Embed snippet. See
+Install the Grona Embed snippet
+.
+A plugin rewrites the snippet.
+An optimisation plugin that moves the script to another host and removes the
+data-grona-embed-script
+attribute hides it from the check. Exclude the snippet from the plugin’s script handling.
+A consent tool holds the script back.
+The check never accepts a consent prompt. If the tool keeps the snippet off the page until the visitor accepts, or removes its
+data-grona-embed-script
+attribute and
+src
+, the check does not see it.
+The script is added late.
+A tag manager or a delayed-loading plugin can add the snippet after the page has loaded, too late for the check. Paste the snippet directly into
+<head>
+where you can.
+Grona cannot load the page.
+Pages behind a login, a password, a region block or bot protection read
+absent
+.
+The wrong page.
+The check covers one URL. A snippet installed only on some templates reads
+absent
+on the others.
+Note
+When the API reads
+absent
+and you believe the snippet is installed, open the page in a normal browser and look for the
+data-grona-embed-script
+attribute in the page source.
+Next steps
+Section titled “Next steps”
+Install the Grona Embed snippet
+: the snippet and where it goes.
+Create campaigns from your platform
+: the end-to-end flow that starts with this check.
+Previous
+Visual editor links
+Next
+Mobile grants API
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

@@ -1,0 +1,346 @@
+Mobile grants API | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+Where it fits
+Fetch grants
+Repeat calls
+The customer id
+The grant format
+Errors
+Caching
+What Grona does not provide
+Next steps
+On this page
+Overview
+Where it fits
+Fetch grants
+Repeat calls
+The customer id
+The grant format
+Errors
+Caching
+What Grona does not provide
+Next steps
+The mobile grants API is available on request. Email
+support@grona.ai
+to get access.
+API reference
+/
+Guides
+Mobile grants API
+A grant lets one identified shopper see one money-bearing offer in your app, such as 10% off this order. Grona signs each grant, the Grona SDK shows an offer only when it holds a matching grant, and your order backend checks the grant again before it applies the treatment. This page covers the one call your backend makes to fetch grants, where it fits, and how to handle failures and caching. The mobile grants API is available on request. It is not part of Grona Embed.
+Where it fits
+Section titled “Where it fits”
+The app identifies the shopper.
+It passes an opaque customer id, such as
+cus_7Hq2Lm9x
+, to the SDK’s
+identify
+. See
+Shoppers and identity
+.
+The SDK asks the app for grants.
+It does this on
+identify
+, then again shortly before the nearest grant expires, and at least once an hour, through the grant source your app provides. Your app passes the request to your backend, inside the shopper’s signed-in session.
+Your backend calls Grona.
+It sends
+POST https://api.grona.ai/v1/mobile/grants
+with your Grona secret key and the customer id from the shopper’s session.
+Your backend returns the grants to the app.
+The SDK verifies each one and shows an offer only when a grant matches its campaign, variant, treatment type and value.
+Your order backend verifies the grant at order time.
+It checks the signature and claims, enforces single use and applies the treatment. See
+Grants and order verification
+.
+Fetch grants
+Section titled “Fetch grants”
+The request is server to server, authenticated with your Grona secret key (Grona gives it to you). It is separate from the Grona Embed key in
+Settings > Secrets
+. The body has one field, the shopper’s customer id.
+curl
+Node
+Terminal window
+curl
+https://api.grona.ai/v1/mobile/grants
+\
+-H
+"Authorization: Bearer
+$GRONA_MOBILE_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"customerId": "cus_7Hq2Lm9x"}'
+// grants.mjs: call this from the route your app uses to fetch grants (Node 18 or later).
+export
+async
+function
+fetchGrants
+(
+customerId
+) {
+const
+res
+=
+await
+fetch
+(
+'https://api.grona.ai/v1/mobile/grants'
+, {
+method:
+'POST'
+,
+headers:
+{
+Authorization:
+`Bearer ${
+process.env.
+GRONA_MOBILE_SECRET_KEY
+}`
+,
+'Content-Type'
+:
+'application/json'
+,
+},
+body:
+JSON
+.
+stringify
+({ customerId }),
+signal:
+AbortSignal.
+timeout
+(
+5000
+),
+});
+if
+(
+!
+res.
+ok
+)
+throw
+new
+Error
+(
+`Grona grants request failed: ${
+res.
+status
+}`
+);
+const
+{
+data
+}
+=
+await
+res.
+json
+();
+return
+data.
+grants
+;
+// Can be empty: no grant applies right now.
+}
+// In your route handler, take the id from the shopper's session, never from the request.
+// Return the list on success. On failure, return an error status so the app reports a
+// failed fetch and the SDK retries later:
+//
+// try {
+//   res.json({ grants: await fetchGrants(session.customerId) });
+// } catch {
+//   res.status(503).json({ error: 'grants_unavailable' });
+// }
+The response lists the shopper’s grants:
+{
+"data"
+: {
+"grants"
+: [
+"eyJhbGciOiJFUzI1NiIs..."
+]
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+An empty
+grants
+list is a normal answer: no offer applies to this shopper right now. Return the list to the app as it is.
+Repeat calls
+Section titled “Repeat calls”
+Repeat calls for the same customer return that customer’s currently valid grants. Grona does not mint a new grant for a campaign while an unexpired one exists for that customer, so retries and refetches cannot multiply the grants a shopper can redeem. That makes the call safe to retry.
+Your order backend still enforces single use for each grant, keyed on its
+jti
+claim. Once a grant expires, a later call can return a new grant for the same campaign, with a new
+jti
+. If an offer must apply once per customer rather than once per grant, your order backend enforces that too.
+Caution
+Take
+customerId
+from the shopper’s authenticated session on your backend. If your route accepted a customer id from the app, anyone could fetch grants for another shopper.
+The customer id
+Section titled “The customer id”
+customerId
+is the same opaque id your app passes to the SDK’s
+identify
+. It becomes the grant’s
+sub
+claim, and both the SDK and your order backend check it against the shopper. Never use an email address, a phone number or a national id.
+The grant format
+Section titled “The grant format”
+Each grant is a compact JWS signed by Grona, at most 4 KB, that names one shopper, one campaign and variant, and one treatment. It expires at most 24 hours after it is issued.
+Grants and order verification
+lists the header and every claim.
+Errors
+Section titled “Errors”
+Status
+When
+What to do
+400 invalid_request
+customerId
+is missing, or is not 1 to 128 letters, digits,
+.
+,
+_
+,
+:
+or
+-
+.
+Send the customer id from the shopper’s session. The SDK’s
+identify
+accepts the same characters.
+401 unauthorized
+The secret key is missing, malformed, unknown or revoked.
+Check your Grona secret key. See
+The mobile backend key
+.
+429
+,
+503
+Too many requests, or Grona is briefly unavailable.
+Report a failed fetch to the app. The SDK retries with backoff.
+500 internal
+Something failed on Grona’s side.
+Report a failed fetch to the app. The SDK retries with backoff.
+When the call to Grona fails or times out, tell the app the fetch failed rather than returning an empty list. The app’s grant source then reports a failure (on Android,
+fetchGrants
+returns
+null
+), and the SDK retries with backoff. An empty list means the fetch succeeded and no grant applies, so the SDK does not retry straight away. Either way the shopper sees no offer until a grant arrives: the campaign gives way to the next one in that placement and the app keeps working. The SDK waits at most 10 seconds for a grant fetch, so keep your route fast.
+Caching
+Section titled “Caching”
+Grants are short-lived: each one expires at most 24 hours after it is issued. The SDK keeps them in memory only, and refetches shortly before the nearest one expires and at least once an hour.
+You do not need to cache grants. Fetching them on each request from the app is the expected pattern: repeat calls return the customer’s currently valid grants, not new ones.
+If you do cache, key the cache by customer id, never share entries between shoppers, and drop an entry no later than the earliest
+exp
+among its grants.
+Clear any cached grants when the shopper signs out.
+What Grona does not provide
+Section titled “What Grona does not provide”
+No redeem endpoint.
+Your order backend verifies each grant itself and enforces single use, keyed on the grant’s
+jti
+claim and never on the token string. See
+Grants and order verification
+.
+No key-download endpoint.
+There is no API for fetching signing keys. See
+Rotate signing keys
+.
+Next steps
+Section titled “Next steps”
+Backend integration overview
+: everything your servers do for the mobile SDKs.
+Offers and grants
+: how offers, grants and treatments fit together.
+Previous
+Verify installations
+Next
+Conventions
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

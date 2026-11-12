@@ -1,0 +1,10 @@
+
+# orchestrator raw log (foundry-protocol): local, never committed
+docs/orchestration-log/raw/
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.tgz

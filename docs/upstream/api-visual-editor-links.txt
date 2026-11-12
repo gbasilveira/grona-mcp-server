@@ -1,0 +1,541 @@
+Visual editor links | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+How a link works
+Link lifecycle
+Get a new link
+Check a link you hold
+Mint links when the user clicks
+Handle links as secrets
+Errors
+Next steps
+On this page
+Overview
+How a link works
+Link lifecycle
+Get a new link
+Check a link you hold
+Mint links when the user clicks
+Handle links as secrets
+Errors
+Next steps
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+API reference
+/
+Guides
+Visual editor links
+An editor link opens one variation of a campaign in the Grona visual editor, in your user’s browser. Use this page when you add an “Edit” button to your product: it covers how long a link lasts, how to get a fresh one, and how to keep links from leaking.
+How a link works
+Section titled “How a link works”
+An editor link looks like this:
+https://services.grona.ai/api/public/editor/launch?token=...
+The token in the query string is what lets the editor open. Anyone who holds a link that has not expired gets an editor session.
+The token expires 15 minutes after it is issued.
+generatedAt
+and
+expiresAt
+in the response give the link’s window.
+The link is opened in a browser. Your backend never calls it.
+Treat a link as usable by whoever holds it until
+expiresAt
+.
+The editor opens on your live page, in the user’s browser, and the
+Grona Embed snippet
+is what starts it. On a page without the snippet, the link opens the page but no editor starts. Check the page with
+verify-script
+first.
+Link lifecycle
+Section titled “Link lifecycle”
+Create.
+Creating a campaign returns an
+editUrl
+,
+generatedAt
+and
+expiresAt
+for every variation. An A/B test returns two links, one for Control and one for Test.
+Open.
+Send the link to the user’s browser while it is fresh. The user edits the variation and saves. Saving publishes the variation, so on a live campaign the saved changes reach visitors without another API call.
+Expire.
+15 minutes after
+generatedAt
+, the link stops opening the editor. Changes the user already saved are kept.
+Refresh.
+Request a new link with
+POST /variations/edit-link
+, or send the link you hold to
+POST /variations/edit-link/validate
+and get back a link that works.
+List, get and update do not return editor links. When you need one later, request it with the variation id.
+Get a new link
+Section titled “Get a new link”
+Send a variation id from
+variations[].id
+on create, list or get. If you do not have the id, send the variation’s page as
+url
+instead. If several variations share that page, Grona uses the most recently updated one, and if you send both, Grona uses
+variationId
+.
+curl
+Node
+Terminal window
+curl
+https://services.grona.ai/api/public/v1/variations/edit-link
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"variationId": "671a3c90e4b0a1f2c3d40012"}'
+// edit-link.mjs (Node 18 or later)
+const
+res
+=
+await
+fetch
+(
+'https://services.grona.ai/api/public/v1/variations/edit-link'
+, {
+method:
+'POST'
+,
+headers:
+{
+Authorization:
+`Bearer ${
+process.env.
+GRONA_SECRET_KEY
+}`
+,
+'Content-Type'
+:
+'application/json'
+,
+},
+body:
+JSON
+.
+stringify
+({
+variationId:
+'671a3c90e4b0a1f2c3d40012'
+}),
+});
+const
+{
+data
+}
+=
+await
+res.
+json
+();
+// data.editUrl is good until data.expiresAt.
+{
+"data"
+: {
+"editUrl"
+:
+"https://services.grona.ai/api/public/editor/launch?token=..."
+,
+"variationId"
+:
+"671a3c90e4b0a1f2c3d40012"
+,
+"previewUrl"
+:
+"https://shop.example.com/?..."
+,
+"generatedAt"
+:
+"2026-10-20T11:12:05.000Z"
+,
+"expiresAt"
+:
+"2026-10-20T11:27:05.614Z"
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+generatedAt
+and
+expiresAt
+describe
+editUrl
+only.
+Check a link you hold
+Section titled “Check a link you hold”
+If your product keeps a link for a few minutes, for example while a user decides whether to edit, send it to the validate endpoint before you open it. Send the whole link as Grona issued it, not the token inside it:
+Terminal window
+curl
+https://services.grona.ai/api/public/v1/variations/edit-link/validate
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"editUrl": "https://services.grona.ai/api/public/editor/launch?token=..."}'
+For a link Grona issued to a variation in your workspace, expired or not, the response is
+200
+and
+data.editUrl
+is the link to open:
+Still valid:
+the same link comes back byte for byte, and
+generatedAt
+and
+expiresAt
+describe it.
+valid
+is
+true
+and
+refreshed
+is
+false
+.
+Expired or close to expiring:
+a new link comes back with a full 15-minute lifetime.
+valid
+is
+false
+and
+refreshed
+is
+true
+. A link counts as close to expiring when about two minutes or less remain.
+{
+"data"
+: {
+"valid"
+:
+false
+,
+"refreshed"
+:
+true
+,
+"editUrl"
+:
+"https://services.grona.ai/api/public/editor/launch?token=..."
+,
+"variationId"
+:
+"671a3c90e4b0a1f2c3d40012"
+,
+"generatedAt"
+:
+"2026-10-20T13:41:09.000Z"
+,
+"expiresAt"
+:
+"2026-10-20T13:56:09.327Z"
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+Open
+data.editUrl
+either way; you do not need to branch on
+valid
+. A link that comes back unchanged may have only a little over two minutes left, so open it straight away.
+A value that is not a Grona editor link returns
+400
+. A link for a variation outside your workspace, or one that no longer exists, returns
+404
+.
+Mint links when the user clicks
+Section titled “Mint links when the user clicks”
+The safest pattern is not to hold links at all. Give your “Edit” button a route on your own backend that checks the user, requests a fresh link and redirects the browser to it. The link then exists for a moment and is never stored.
+// server.mjs: an Express route that opens the editor (Node 18 or later).
+import
+express
+from
+'express'
+;
+import
+{ findCampaignForUser }
+from
+'./campaigns.mjs'
+;
+// your own database lookup
+const
+app
+=
+express
+();
+app.
+get
+(
+'/campaigns/:campaignId/variations/:variationId/edit'
+,
+async
+(
+req
+,
+res
+)
+=>
+{
+// 1. Check ownership in your own database. req.user is set by your login middleware.
+//    The campaign must belong to this user, and the variation must belong to the campaign.
+const
+campaign
+=
+await
+findCampaignForUser
+(req.
+user
+, req.params.
+campaignId
+);
+if
+(
+!
+campaign
+||
+!
+campaign.gronaVariationIds.
+includes
+(req.params.
+variationId
+)) {
+return
+res.
+status
+(
+404
+).
+send
+(
+'Not found.'
+);
+}
+// 2. Only then ask Grona for a link to that variation.
+const
+grona
+=
+await
+fetch
+(
+'https://services.grona.ai/api/public/v1/variations/edit-link'
+, {
+method:
+'POST'
+,
+headers:
+{
+Authorization:
+`Bearer ${
+process.env.
+GRONA_SECRET_KEY
+}`
+,
+'Content-Type'
+:
+'application/json'
+,
+},
+body:
+JSON
+.
+stringify
+({
+variationId:
+req.params.
+variationId
+}),
+});
+if
+(
+!
+grona.
+ok
+)
+return
+res.
+status
+(
+502
+).
+send
+(
+'Could not open the editor.'
+);
+const
+{
+data
+}
+=
+await
+grona.
+json
+();
+res.
+set
+(
+'Cache-Control'
+,
+'no-store'
+);
+res.
+redirect
+(
+303
+, data.
+editUrl
+);
+});
+app.
+listen
+(
+3000
+);
+Your route decides who may edit, so the ownership check in step 1 is not optional. Your secret key covers every campaign in your workspace, and Grona checks only that the variation is in that workspace. It cannot tell your users apart. Never send Grona a variation id taken from a request until you have matched it against the variation ids you saved, at create time, for a campaign the signed-in user owns.
+The check decides who gets a link. It does not limit what the editor can reach once it is open, so give editor links only to people you trust with every campaign in the workspace. If your customers must not reach each other’s campaigns, give each one their own Grona Embed workspace.
+Handle links as secrets
+Section titled “Handle links as secrets”
+Because the token travels in the query string, a link can end up anywhere a URL is recorded.
+Open links straight away. Do not store them in your database, a cookie or local storage.
+Keep them out of your logs, error reports and analytics tools. Redact the
+token
+parameter if a URL might be recorded.
+Do not send them by email or chat, or put them in a support ticket.
+Do not show them in your UI as text a user could copy and share.
+Send them only to the user who asked to edit, over HTTPS.
+Caution
+If a link may have leaked, treat it as used. There is no call to cancel a single link early, and it stays usable until its
+expiresAt
+.
+Errors
+Section titled “Errors”
+Status
+When
+Fix
+400 invalid_request
+Neither
+variationId
+nor
+url
+was sent,
+variationId
+is not a valid id, or the
+editUrl
+sent to validate is not a Grona editor link.
+Send a variation id from a Grona response, or the whole link exactly as issued.
+404 not_found
+The variation does not exist in this workspace, for example because its campaign was deleted, or no variation matches the
+url
+.
+Read the campaign again for its current variation ids.
+See
+Errors
+for authentication errors and retries.
+Next steps
+Section titled “Next steps”
+Verify installations
+: check that the Grona Embed snippet is on the page before users edit it.
+Create campaigns from your platform
+: the end-to-end flow these links are part of.
+Previous
+Create campaigns from your platform
+Next
+Verify installations
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

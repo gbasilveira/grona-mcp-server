@@ -1,0 +1,25 @@
+{
+  "name": "grona-mcp",
+  "version": "1.0.0",
+  "description": "Complete Grona API MCP server with agent workflows",
+  "type": "module",
+  "license": "MIT",
+  "engines": {"node": ">=22.12.0"},
+  "bin": {"grona-mcp": "dist/index.js"},
+  "exports": {".": "./dist/server.js", "./client": "./dist/client.js"},
+  "files": ["dist", "docs/upstream/grona-api.yaml", "README.md", "docs/API.md", "docs/AGENT-GUIDE.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "verify": "npm run typecheck && npm test && npm run build && npm run docs:check && bash scripts/check-format-contract.sh",
+    "docs:generate": "tsx scripts/generate-api-docs.ts",
+    "docs:check": "tsx scripts/generate-api-docs.ts --check",
+    "prepack": "npm run build"
+  },
+  "dependencies": {"@modelcontextprotocol/server": "2.4.0", "zod": "4.6.7", "yaml": "2.9.0"},
+  "devDependencies": {"@modelcontextprotocol/client": "2.4.0", "@types/node": "26.6.6", "typescript": "7.0.2", "tsx": "4.22.4", "vitest": "5.1.0", "@vitest/coverage-v8": "5.1.0"}
+}

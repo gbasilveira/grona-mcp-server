@@ -1,0 +1,406 @@
+Quickstart: Public API | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Overview
+Quickstart: website
+Quickstart: Android
+Quickstart: iOS
+Quickstart: Public API
+Choose your integration
+How Grona works
+Concepts and glossary
+Keys and environments
+Data, privacy and security
+Domains and network calls
+Use these docs with AI tools
+Get help
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+Before you start
+Make the calls
+If a call fails
+Next steps
+On this page
+Overview
+Before you start
+Make the calls
+If a call fails
+Next steps
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+Get started
+Quickstart: Public API
+This quickstart calls the Grona Public API, part of Grona Embed, from a terminal. You check that the Grona Embed snippet is on a page, create a website campaign, open its variation in the visual editor and set the campaign live. Use it to see the request and response shapes before you build the calls into your own platform.
+Before you start
+Section titled “Before you start”
+Get a Grona Embed workspace.
+The Public API is available on request: email
+support@grona.ai
+to request one.
+Install the Grona Embed snippet
+on the page you want to change. Campaigns created through the API run through it, and the Public API does not work with the script on the Website pages. See
+Install the Grona Embed snippet
+.
+Set a page variable on that page.
+A campaign shows only to visitors whose page sets a variable you name to a value you name. This quickstart uses
+window.audience_id = 'returning_buyer';
+in an inline script above the snippet.
+Generate a secret API key
+in the Grona Embed dashboard, under
+Settings > Secrets
+. Only a workspace Owner or Admin sees that tab. The key looks like
+gro_ed_<keyId>_<secret>
+and is scoped to one workspace. It is a server-side secret: never put it in a browser, an app or a repository.
+Put the key in an environment variable,
+so the commands below never contain it:
+Terminal window
+export
+GRONA_SECRET_KEY
+=
+"gro_ed_<keyId>_<secret>"
+In production, load it from your secrets manager instead.
+Every request goes to
+https://services.grona.ai/api/public/v1
+with the key in the
+Authorization
+header. The workspace comes from the key; it is never part of the URL or the body.
+Caution
+There is no sandbox. These calls act on your live workspace. The campaign you create starts paused, so visitors see nothing until the last step.
+Make the calls
+Section titled “Make the calls”
+Check that the snippet is on the page.
+Terminal window
+curl
+-sS
+https://services.grona.ai/api/public/v1/websites/verify-script
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"url": "https://shop.example.com/"}'
+{
+"data"
+: {
+"url"
+:
+"https://shop.example.com/"
+,
+"script"
+: {
+"status"
+:
+"present"
+,
+"checkedAt"
+:
+"2026-10-20T09:28:43.162Z"
+}
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+absent
+means the snippet was not found or the page could not be loaded. Fix the installation before you go on. See
+Verify installations
+.
+Create a campaign.
+This creates a general campaign, with one variation, on the home page.
+name
+,
+url
+,
+segmentId
+and
+segmentValue
+are required:
+segmentId
+is the name of your page variable and
+segmentValue
+is the value it must hold.
+externalId
+is your own id for the campaign.
+Terminal window
+curl
+-sS
+https://services.grona.ai/api/public/v1/campaigns
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{
+"name": "Free delivery bar for returning buyers",
+"url": "https://shop.example.com/",
+"segmentId": "audience_id",
+"segmentValue": "returning_buyer",
+"externalId": "CMP-1024"
+}'
+The response is
+201 Created
+:
+{
+"data"
+: {
+"id"
+:
+"671a3c90e4b0a1f2c3d40011"
+,
+"externalId"
+:
+"CMP-1024"
+,
+"name"
+:
+"Free delivery bar for returning buyers"
+,
+"status"
+:
+"paused"
+,
+"domain"
+:
+"https://shop.example.com"
+,
+"script"
+: {
+"status"
+:
+"checking"
+,
+"checkedAt"
+:
+null
+},
+"createdAt"
+:
+"2026-10-20T09:30:12.418Z"
+,
+"updatedAt"
+:
+"2026-10-20T09:30:12.702Z"
+,
+"type"
+:
+"general"
+,
+"pageTargeting"
+:
+"specific"
+,
+"segmentId"
+:
+"audience_id"
+,
+"segmentValue"
+:
+"returning_buyer"
+,
+"variations"
+: [
+{
+"id"
+:
+"671a3c90e4b0a1f2c3d40012"
+,
+"name"
+:
+"Free delivery bar for returning buyers - Variation"
+,
+"type"
+:
+"variant"
+,
+"previewUrl"
+:
+"https://shop.example.com/?..."
+,
+"editUrl"
+:
+"https://services.grona.ai/api/public/editor/launch?token=..."
+,
+"generatedAt"
+:
+"2026-10-20T09:30:12.000Z"
+,
+"expiresAt"
+:
+"2026-10-20T09:45:12.731Z"
+}
+]
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+New campaigns always start
+paused
+. The snippet check on the page runs in the background, so
+script.status
+starts as
+checking
+.
+To create an A/B test or target several pages, see
+Create campaigns from your platform
+.
+Open the editor link in a browser.
+Copy
+variations[0].editUrl
+from the response into your browser. It opens the visual editor on your page, where you build the variation. The link is a secret and expires 15 minutes after
+generatedAt
+, so open it straight away and do not store, log or forward it.
+If it has expired, ask for a new one:
+Terminal window
+curl
+-sS
+https://services.grona.ai/api/public/v1/variations/edit-link
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"variationId": "671a3c90e4b0a1f2c3d40012"}'
+When you have saved the variation, open its
+previewUrl
+to check it on your page. Preview records nothing. See
+Visual editor links
+.
+Set the campaign live.
+You can use Grona’s campaign id or your
+externalId
+in the path:
+Terminal window
+curl
+-sS
+-X
+PATCH
+https://services.grona.ai/api/public/v1/campaigns/CMP-1024/status
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"status": "live"}'
+{
+"data"
+: {
+"status"
+:
+"live"
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+Grona then rebuilds your workspace’s script and refreshes the CDN, so allow a few minutes before visitors see the variation. Only visitors whose page sets
+audience_id
+to
+returning_buyer
+see it. To stop the campaign, send
+{"status": "paused"}
+to the same endpoint.
+If a call fails
+Section titled “If a call fails”
+Errors share one shape, with a machine-readable
+code
+and a readable
+message
+:
+{
+"error"
+: {
+"code"
+:
+"conflict"
+,
+"message"
+:
+"`externalId` \"CMP-1024\" is already used by another campaign in this workspace."
+}
+}
+conflict
+on create means a campaign with that
+externalId
+already exists. That makes
+externalId
+a safe way to retry a create: a retry cannot make a duplicate. See
+Errors
+for every code.
+Next steps
+Section titled “Next steps”
+Authentication
+for how keys work and how to regenerate them.
+Create campaigns from your platform
+for A/B tests, traffic splits and multi-page campaigns.
+Conventions
+for ids, timestamps and the response envelope.
+Previous
+Quickstart: iOS
+Next
+Choose your integration
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

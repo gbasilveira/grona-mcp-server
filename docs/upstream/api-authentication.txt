@@ -1,0 +1,306 @@
+Authentication | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+Get a key
+Send the key
+The workspace comes from the key
+Keep the key on your servers
+Regenerate or revoke a key
+When authentication fails
+Endpoints that do not use your key
+The mobile backend key
+Next steps
+On this page
+Overview
+Get a key
+Send the key
+The workspace comes from the key
+Keep the key on your servers
+Regenerate or revoke a key
+When authentication fails
+Endpoints that do not use your key
+The mobile backend key
+Next steps
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+API reference
+/
+Guides
+Authentication
+Every call to the Public API carries a workspace secret key. This page covers how to generate a key, how to send it, what it can reach and what to do when a call is refused. Read it before you write your first request.
+Get a key
+Section titled “Get a key”
+You manage the key yourself in the Grona Embed dashboard, under
+Settings > Secrets
+. Only a workspace Owner or Admin sees that tab. If you do not have a Grona Embed workspace yet, email
+support@grona.ai
+to request one: the Public API is available on request.
+Sign in to the
+Grona Embed dashboard
+and open
+Settings > Secrets
+.
+Select
+Generate API key
+.
+Copy the key from the dialog and put it in your secrets manager. Grona shows it only once.
+A workspace has one key at a time. A key looks like this:
+gro_ed_<keyId>_<secret>
+Treat the whole string as one opaque value. Do not split it or build it from parts.
+After you close the dialog, the tab shows the
+gro_ed_
+prefix, the last four characters of the secret, whether the key is active, when it was created and when it was last used.
+Grona stores only a hash of the secret, so nobody at Grona can read your key back to you. If you lose it, regenerate it.
+A key acts on the real campaigns of its workspace. New campaigns start
+paused
+, so you can create, edit and preview a campaign without showing it to visitors until you set it live.
+Send the key
+Section titled “Send the key”
+Send the key in one of two headers. Both work on every endpoint under
+/api/public/v1
+, so pick one and use it everywhere.
+curl
+Node
+Terminal window
+# Authorization header
+curl
+https://services.grona.ai/api/public/v1/campaigns
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+# X-API-Key header
+curl
+https://services.grona.ai/api/public/v1/campaigns
+\
+-H
+"X-API-Key:
+$GRONA_SECRET_KEY
+"
+// list.mjs: run with `node list.mjs` (Node 18 or later).
+const
+res
+=
+await
+fetch
+(
+'https://services.grona.ai/api/public/v1/campaigns'
+, {
+headers:
+{
+Authorization:
+`Bearer ${
+process.env.
+GRONA_SECRET_KEY
+}`
+},
+});
+const
+{
+data
+,
+meta
+}
+=
+await
+res.
+json
+();
+console.
+log
+(
+`${
+meta.
+count
+} campaigns in workspace ${
+meta.
+workspaceId
+}`
+);
+The workspace comes from the key
+Section titled “The workspace comes from the key”
+Grona resolves the workspace from the key on every call. The workspace is never part of a URL or a request body, and
+meta.workspaceId
+in every successful response tells you which workspace answered.
+This also means a key can only read and change its own workspace. Ids are looked up inside the key’s workspace, so a campaign or variation id from another workspace returns
+404 not_found
+.
+Keep the key on your servers
+Section titled “Keep the key on your servers”
+The secret key can create, change and delete every campaign in your workspace. Anyone who has it can do the same.
+Store it in an environment variable or your secret manager. The samples on these pages read it from
+GRONA_SECRET_KEY
+.
+Call the API from your backend only. Never put the key in browser JavaScript, a mobile app, a public repository or a support ticket.
+Keep it out of logs, error reports and analytics. Redact the
+Authorization
+and
+X-API-Key
+headers if your HTTP client logs requests.
+Give it only to the services that call Grona.
+Caution
+If a key may have leaked, regenerate or revoke it in
+Settings > Secrets
+straight away, then update every server that used it.
+Regenerate or revoke a key
+Section titled “Regenerate or revoke a key”
+A workspace Owner or Admin does both in
+Settings > Secrets
+.
+Regenerate
+replaces the key and shows the new one once. The old key stops working immediately, and there is no overlap, so calls with it return
+401
+until you update every server that calls Grona.
+Revoke
+stops the key immediately. To call the API again, select
+Generate new key
+.
+Regenerate when someone who had access leaves, when a key may have been exposed, or on your own schedule.
+When authentication fails
+Section titled “When authentication fails”
+A missing, malformed, unknown or revoked key returns
+401
+with the usual error envelope:
+{
+"error"
+: {
+"code"
+:
+"unauthorized"
+,
+"message"
+:
+"Invalid or missing API key."
+}
+}
+To fix it, check that:
+the header is spelled
+Authorization: Bearer <key>
+or
+X-API-Key: <key>
+, with no quotes or extra spaces around the key;
+the full key is present, starting with
+gro_ed_
+, and the environment variable is set in the process that makes the call;
+the key has not been regenerated or revoked.
+Do not retry a
+401
+in a loop. It will not succeed until the key changes.
+Endpoints that do not use your key
+Section titled “Endpoints that do not use your key”
+Two kinds of URL work without your secret key, by design.
+Editor links.
+An
+editUrl
+such as
+https://services.grona.ai/api/public/editor/launch?token=...
+is opened in a browser. The short-lived token inside it is what lets the editor open, so treat the link as a secret. See
+Visual editor links
+.
+Grona mobile SDKs.
+The Android and iOS SDKs reach
+api.grona.ai
+with the public workspace key, never a secret key. Allow outbound HTTPS to that host, as listed in
+Domains and network calls
+.
+The mobile backend key
+Section titled “The mobile backend key”
+The
+mobile grants API
+is not part of Grona Embed and uses a separate key: your Grona secret key (Grona gives it to you). It does not come from
+Settings > Secrets
+, and the key from that tab is for the Public API on
+services.grona.ai
+only. Keep the mobile backend key on your servers in the same way. For where each key belongs, see
+Keys and environments
+.
+Next steps
+Section titled “Next steps”
+Errors
+: every error code and how to fix it.
+Conventions
+: ids, timestamps and safe retries.
+Previous
+Overview
+Next
+Install the snippet
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

@@ -1,0 +1,883 @@
+Create campaigns from your platform | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+Before you start
+Create and launch a campaign
+Campaign options
+Run an A/B test
+Run on several pages
+Target by page variable
+After launch
+Next steps
+On this page
+Overview
+Before you start
+Create and launch a campaign
+Campaign options
+Run an A/B test
+Run on several pages
+Target by page variable
+After launch
+Next steps
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+API reference
+/
+Guides
+Create campaigns from your platform
+This guide takes one campaign from your product to live visitors on your website, using the Public API from your backend. Follow it when you want users of your own platform to create Grona campaigns without opening the Grona Embed dashboard. The example is Acme Market’s “Free delivery bar for returning buyers” campaign; the options at the end show an A/B test across several pages.
+Before you start
+Section titled “Before you start”
+You need a workspace secret key in the
+GRONA_SECRET_KEY
+environment variable of the server that calls Grona. See
+Authentication
+.
+The Grona Embed snippet must be installed on your website. The Public API does not work with the script on the Website pages. See
+Install the Grona Embed snippet
+.
+Your page must set the page variable the campaign targets. The example uses
+window.audience_id
+. See
+Target by page variable
+.
+The Node samples need Node 18 or later and use this small helper. Save it next to the other files as
+grona.mjs
+:
+// grona.mjs: a small client for the Grona Public API (Node 18 or later).
+const
+BASE_URL
+=
+'https://services.grona.ai/api/public/v1'
+;
+export
+async
+function
+grona
+(
+method
+,
+path
+,
+body
+) {
+const
+res
+=
+await
+fetch
+(
+`${
+BASE_URL
+}${
+path
+}`
+, {
+method,
+headers:
+{
+Authorization:
+`Bearer ${
+process.env.
+GRONA_SECRET_KEY
+}`
+,
+'Content-Type'
+:
+'application/json'
+,
+},
+body:
+body
+===
+undefined
+?
+undefined
+:
+JSON
+.
+stringify
+(body),
+});
+const
+json
+=
+await
+res.
+json
+().
+catch
+(()
+=>
+null
+);
+if
+(
+!
+res.
+ok
+) {
+throw
+new
+Error
+(
+`Grona ${
+res.
+status
+} ${
+json?.error?.
+code
+??
+''}: ${
+json?.error?.
+message
+??
+''}`
+);
+}
+return
+json;
+}
+Create and launch a campaign
+Section titled “Create and launch a campaign”
+Check that the snippet is on the page.
+Campaigns reach visitors through the Grona Embed snippet, so confirm it is on the page the campaign will run on before you create anything.
+curl
+Node
+Terminal window
+curl
+https://services.grona.ai/api/public/v1/websites/verify-script
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"url": "https://shop.example.com/"}'
+check.mjs
+import
+{ grona }
+from
+'./grona.mjs'
+;
+const
+{
+data
+}
+=
+await
+grona
+(
+'POST'
+,
+'/websites/verify-script'
+, {
+url:
+'https://shop.example.com/'
+,
+});
+if
+(data.script.
+status
+!==
+'present'
+) {
+throw
+new
+Error
+(
+`Grona Embed snippet not found on ${
+data.
+url
+}`
+);
+}
+present
+means the snippet was found.
+absent
+means it was not found or the page could not be loaded. The check covers only the page you send. If you get
+absent
+on a page where the snippet is installed, see
+Verify installations
+.
+Create the campaign.
+Send a name, the page and the page variable that decides who sees the campaign.
+name
+,
+url
+,
+segmentId
+and
+segmentValue
+are required.
+segmentId
+is the name of a variable your page sets on
+window
+, and
+segmentValue
+is the value it must hold.
+externalId
+stores the id of the record in your own product and makes retries safe.
+Campaign options
+covers A/B tests and several pages.
+The pages a campaign runs on and its page variable are in your site’s public script, where anyone can read them. Do not put customer names or other private data in them.
+curl
+Node
+Terminal window
+curl
+https://services.grona.ai/api/public/v1/campaigns
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{
+"name": "Free delivery bar for returning buyers",
+"url": "https://shop.example.com/",
+"segmentId": "audience_id",
+"segmentValue": "returning_buyer",
+"externalId": "CMP-1024"
+}'
+create.mjs
+import
+{ grona }
+from
+'./grona.mjs'
+;
+const
+{ data:
+campaign
+}
+=
+await
+grona
+(
+'POST'
+,
+'/campaigns'
+, {
+name:
+'Free delivery bar for returning buyers'
+,
+url:
+'https://shop.example.com/'
+,
+segmentId:
+'audience_id'
+,
+segmentValue:
+'returning_buyer'
+,
+externalId:
+'CMP-1024'
+,
+});
+// Save these ids in your own database. Send each editUrl to the user's browser now.
+console.
+log
+(campaign.
+id
+, campaign.
+status
+, campaign.variations.
+map
+((
+v
+)
+=>
+v.
+id
+));
+The response is
+201 Created
+:
+{
+"data"
+: {
+"id"
+:
+"671a3c90e4b0a1f2c3d40011"
+,
+"externalId"
+:
+"CMP-1024"
+,
+"name"
+:
+"Free delivery bar for returning buyers"
+,
+"status"
+:
+"paused"
+,
+"domain"
+:
+"https://shop.example.com"
+,
+"script"
+: {
+"status"
+:
+"checking"
+,
+"checkedAt"
+:
+null
+},
+"createdAt"
+:
+"2026-10-20T09:30:12.418Z"
+,
+"updatedAt"
+:
+"2026-10-20T09:30:12.702Z"
+,
+"type"
+:
+"general"
+,
+"pageTargeting"
+:
+"specific"
+,
+"segmentId"
+:
+"audience_id"
+,
+"segmentValue"
+:
+"returning_buyer"
+,
+"variations"
+: [
+{
+"id"
+:
+"671a3c90e4b0a1f2c3d40012"
+,
+"name"
+:
+"Free delivery bar for returning buyers - Variation"
+,
+"type"
+:
+"variant"
+,
+"previewUrl"
+:
+"https://shop.example.com/?..."
+,
+"editUrl"
+:
+"https://services.grona.ai/api/public/editor/launch?token=..."
+,
+"generatedAt"
+:
+"2026-10-20T09:30:12.000Z"
+,
+"expiresAt"
+:
+"2026-10-20T09:45:12.731Z"
+}
+]
+},
+"meta"
+: {
+"workspaceId"
+:
+"65e8a1c47d2f9b03e6a15c42"
+}
+}
+The campaign starts
+paused
+. Nothing reaches visitors until step 5.
+Save
+data.id
+and every
+variations[].id
+. You need the variation ids for editor links and, in an A/B test, for the traffic split.
+script.status
+is
+checking
+because Grona checks the campaign’s website in the background after the call returns.
+Create is the only call that returns editor links for every variation, and each one expires 15 minutes after
+generatedAt
+.
+A request over a plan limit, such as the number of campaigns, returns
+403 forbidden
+and creates nothing.
+Open the editor links.
+Each variation has an
+editUrl
+that opens it in the Grona visual editor. Send it to your user’s browser, for example as a redirect from your “Edit” button. The editor opens on your page, so the Grona Embed snippet must be on it. The user makes their changes in the editor and saves them. A general campaign has one link. An A/B test has two, one for Control and one for Test, and authoring the test means opening each of them.
+If the link has expired, request a new one with the variation id:
+curl
+Node
+Terminal window
+curl
+https://services.grona.ai/api/public/v1/variations/edit-link
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"variationId": "671a3c90e4b0a1f2c3d40012"}'
+edit-link.mjs
+import
+{ grona }
+from
+'./grona.mjs'
+;
+const
+{ data:
+link
+}
+=
+await
+grona
+(
+'POST'
+,
+'/variations/edit-link'
+, {
+variationId:
+'671a3c90e4b0a1f2c3d40012'
+,
+});
+// Redirect the user's browser to link.editUrl. Do not store or log it.
+Caution
+The token in an editor link is in the query string, and anyone who holds a live link gets an editor session. Open links straight away, and never store, log or forward them. See
+Visual editor links
+.
+Preview the variation.
+Open the variation’s
+previewUrl
+exactly as Grona returns it to see the page with the saved changes applied. Preview works while the campaign is paused, on a page that has the Grona Embed snippet. It ignores the campaign’s targeting, so it shows the variation whatever the page variable holds, and it records no page views or conversions. Keep the address as it is: preview does not follow the visitor to the next page. A preview link is not private: anyone who has the link can see the variation.
+Set the campaign live.
+When the variation is ready, set the status to
+live
+:
+curl
+Node
+Terminal window
+curl
+-X
+PATCH
+https://services.grona.ai/api/public/v1/campaigns/CMP-1024/status
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"status": "live"}'
+go-live.mjs
+import
+{ grona }
+from
+'./grona.mjs'
+;
+const
+{
+data
+}
+=
+await
+grona
+(
+'PATCH'
+,
+'/campaigns/CMP-1024/status'
+, {
+status:
+'live'
+});
+console.
+log
+(data.
+status
+);
+// "live"
+The response is
+{ "data": { "status": "live" }, "meta": { ... } }
+. Grona then rebuilds your site script, and visitors whose page sets
+audience_id
+to
+returning_buyer
+see the campaign once the refreshed script reaches them, so the change is not instant. Pausing works the same way with
+"paused"
+, and has the same delay.
+The Public API has no endpoint for campaign results.
+Campaign options
+Section titled “Campaign options”
+Beyond the four required fields, the create call can run an A/B test, run on several pages, or both. The last section explains the page variable every campaign targets.
+Run an A/B test
+Section titled “Run an A/B test”
+Set
+type
+to
+abTest
+and Grona creates two variations, Control and Test, in that order.
+trafficSplit
+sets the share of eligible visitors each one gets, as whole numbers that total 100. Leave it out to split 50 and 50.
+An A/B test on one page runs only when the address matches
+url
+exactly, query string included, so a visitor who arrives with a tracking parameter does not enter the test. A general campaign ignores the query string.
+On create, the split is keyed by
+Control
+and
+Test
+, because the variation ids do not exist yet. Every response, and every update, keys it by variation id instead.
+Conventions
+has both shapes.
+Run on several pages
+Section titled “Run on several pages”
+Set
+pageTargeting
+to
+multiple
+to run one campaign on a set of pages instead of one page. Four fields describe the set:
+Field
+Meaning
+url
+A sample page of the kind you want to cover. The editor opens this page. Grona stores it without its query string or fragment.
+slug
+One segment of the sample page’s path, spelled exactly as it appears there. What counts is its position in the path. Required.
+condition
+included
+(the default) matches pages whose segment at that position is in
+list
+.
+not_included
+matches pages whose segment at that position is not in
+list
+.
+list
+The segments to compare against, 1 to 50 of them. Required.
+Grona compares a page only when it is on the same origin as the sample
+url
+and its path has the same number of segments. It takes the path segment that sits at the same position as
+slug
+in the sample
+url
+, and compares it with each entry of
+list
+. The comparison is exact and case-sensitive. A page on another origin, or with a different number of segments, never matches, whichever
+condition
+you use.
+This request creates an A/B test on dairy and bakery product pages, with 60% of eligible visitors in Control. A visitor is eligible when the page sets
+audience_id
+to
+breakfast_shopper
+:
+{
+"name"
+:
+"Breakfast banner on dairy and bakery pages"
+,
+"url"
+:
+"https://shop.example.com/dairy/whole-milk"
+,
+"segmentId"
+:
+"audience_id"
+,
+"segmentValue"
+:
+"breakfast_shopper"
+,
+"type"
+:
+"abTest"
+,
+"pageTargeting"
+:
+"multiple"
+,
+"slug"
+:
+"dairy"
+,
+"condition"
+:
+"included"
+,
+"list"
+: [
+"dairy"
+,
+"bakery"
+],
+"trafficSplit"
+: {
+"Control"
+:
+60
+,
+"Test"
+:
+40
+}
+}
+dairy
+is the first of two segments in the sample path, so Grona compares the first segment of each page with two segments:
+https://shop.example.com/bakery/sourdough
+matches:
+bakery
+is in the list.
+https://shop.example.com/frozen/peas
+does not match:
+frozen
+is not in the list.
+https://shop.example.com/Dairy/whole-milk
+does not match:
+Dairy
+is not
+dairy
+.
+https://shop.example.com/bakery/bread/sourdough
+does not match: its path has three segments.
+https://shop.example.com/
+does not match: its path has no segments.
+Sending
+slug
+,
+condition
+or
+list
+without
+multiple
+returns
+400
+.
+Caution
+not_included
+can match far more pages than you intend. With the rule above set to
+not_included
+, every page with two path segments whose first segment is not
+dairy
+or
+bakery
+matches, including
+https://shop.example.com/account/orders
+. Before you set such a campaign live, check which of your pages fit the rule. Preview ignores targeting, so
+previewUrl
+shows how the sample page looks with the variation, not which pages the rule matches.
+A campaign’s
+url
+,
+type
+and
+pageTargeting
+are fixed once it is created. An update that sends
+url
+or
+pageTargeting
+returns
+400
+, and Grona ignores a
+type
+in an update. You can change
+slug
+,
+condition
+and
+list
+later with an update; a new
+list
+replaces the old one.
+Target by page variable
+Section titled “Target by page variable”
+segmentId
+and
+segmentValue
+are required on every create. They limit a campaign to visitors whose page sets a variable to a given value.
+segmentId
+is the variable’s name and
+segmentValue
+is the value it must hold. To reach every visitor on a page, have the page set the same value for everyone.
+Your page sets the variable on
+window
+:
+<script>
+window.
+audience_id
+=
+'returning_buyer'
+;
+</script>
+The create request names the variable and the value, as in step 2 above.
+Name:
+letters, digits and
+_
+, not starting with a digit, at most 128 characters. Names the browser already defines, such as
+name
+,
+location
+,
+status
+,
+top
+,
+parent
+and
+history
+, are rejected.
+Value:
+1 to 128 letters, digits,
+_
+,
+.
+,
+:
+or
+-
+.
+Match:
+the variable must equal the value exactly, compared as a string.
+Timing:
+Grona keeps checking the variable while the visitor stays on the page, so a value set after the snippet runs still applies. Set it above the snippet so the page does not change in front of the visitor.
+Target visitors by page variable
+covers how to set the variable on your site, and
+Page variables
+is the reference for the fields.
+After launch
+Section titled “After launch”
+Change a campaign
+with
+PATCH /campaigns/{campaignId}
+. Send only the fields to change; the response is the whole campaign. See
+Update a campaign
+.
+Read campaigns
+with
+GET /campaigns
+or
+GET /campaigns/{campaignId}
+, using Grona’s id or your
+externalId
+.
+Delete a campaign
+with
+DELETE /campaigns/{campaignId}
+. Deletion is permanent and frees the
+externalId
+. Like a status change, it reaches visitors once your site script refreshes. If you retry an update or a delete, use Grona’s
+id
+, not your
+externalId
+; see
+Conventions
+.
+Next steps
+Section titled “Next steps”
+Visual editor links
+: keep editor links fresh and handle them safely.
+Verify installations
+: what the snippet check covers and why it can read
+absent
+.
+Errors
+: every error code and which requests are safe to retry.
+Previous
+Install the snippet
+Next
+Visual editor links
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

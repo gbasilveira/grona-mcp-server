@@ -1,0 +1,1524 @@
+openapi: 3.1.0
+info:
+  title: Grona Public API
+  version: 1.0.0
+  summary: Create, launch and manage Grona Embed campaigns from your own systems.
+  description: |
+    The Grona Public API v1 is part of Grona Embed. It lets your backend create website
+    campaigns, open them in the Grona visual editor, set them live and check that the Grona Embed
+    snippet is installed. It works with the Grona Embed snippet, not the script on the Website
+    pages. See [Install the Grona Embed snippet](/api/install-the-snippet/).
+
+    The API is available on request. Access means a Grona Embed workspace: email
+    [support@grona.ai](mailto:support@grona.ai) to request one. You then manage your key in
+    **Settings > Secrets**.
+
+    - **Base URL:** `https://services.grona.ai/api/public/v1`, for example
+      `POST https://services.grona.ai/api/public/v1/campaigns`.
+    - **Authentication:** your workspace secret key, sent as `Authorization: Bearer YOUR_SECRET_KEY`
+      or as `X-API-Key: YOUR_SECRET_KEY`. A key looks like `gro_ed_<keyId>_<secret>`, and a workspace
+      has one at a time. A workspace Owner or Admin generates, regenerates and revokes it in the
+      Grona Embed dashboard under **Settings > Secrets**. Call the API from your servers only.
+      See [Authentication](/api/authentication/).
+    - **Workspace:** resolved from the key. It never appears in a URL or a request body.
+    - **Envelope:** success is `{ "data": ..., "meta": { "workspaceId": ... } }` and every error
+      the API returns, including `429`, is `{ "error": { "code": ..., "message": ... } }`. With a
+      valid key, an unknown endpoint returns `404 not_found`. A `5xx` from a gateway in front of
+      the API may not use the envelope. See [Errors](/api/errors/).
+    - **Rate limits:** requests are rate limited. On `429`, wait for the number of seconds in the
+      `Retry-After` header before retrying.
+    - **Compatibility:** v1 can gain fields, endpoints, optional parameters and enum values,
+      so ignore anything you do not recognise. See [Versioning](/api/versioning/).
+
+    The **Mobile grants** endpoint is for backends that use the Grona mobile SDKs. It has its own
+    host and is authenticated with your Grona secret key; Grona gives you both with access. It
+    is available on request and is not part of Grona Embed.
+    See [Mobile grants API](/api/mobile-grants/).
+  contact:
+    name: Grona support
+    email: support@grona.ai
+    url: https://grona.ai
+  license:
+    name: Proprietary
+    url: https://www.grona.ai/terms
+servers:
+  - url: https://services.grona.ai/api/public/v1
+    description: Production
+security:
+  - secretKeyBearer: []
+  - secretKeyHeader: []
+tags:
+  - name: Campaigns
+    description: |
+      Create, read, update, set live, pause and delete website campaigns.
+      For the end-to-end flow, see [Create campaigns from your platform](/api/create-campaigns/).
+  - name: Editor links
+    description: |
+      Editor links open a variation in the Grona visual editor. Each link expires 15 minutes
+      after it is issued. See [Visual editor links](/api/visual-editor-links/).
+  - name: Websites
+    description: |
+      Check from your backend whether the Grona Embed snippet is on a page.
+      See [Verify installations](/api/verify-installations/).
+  - name: Mobile grants
+    description: |
+      Your backend fetches grants for a signed-in shopper and hands them to the app.
+      The endpoint is on https://api.grona.ai. It is available on request and is not part of
+      Grona Embed. Grona gives you your Grona secret key with access.
+      See [Mobile grants API](/api/mobile-grants/).
+paths:
+  /campaigns:
+    post:
+      tags: [Campaigns]
+      operationId: create-campaign
+      summary: Create a campaign
+      description: |
+        Creates a campaign and its variations in one call. A `general` campaign gets one
+        variation. An `abTest` campaign gets two, Control and Test, in that order.
+
+        - `name`, `url`, `segmentId` and `segmentValue` are required.
+        - New campaigns start `paused`. Nothing reaches visitors until you set the campaign `live`.
+        - The response is the only place that returns an editor link for every variation at once.
+          Each link expires 15 minutes after `generatedAt`.
+        - Grona checks the campaign's website for the snippet after the call returns, so
+          `script.status` usually starts as `checking`.
+        - Send `externalId` to make retries safe: a repeated create returns `409 conflict`
+          instead of a second campaign.
+        - Plan limits apply, for example the number of websites, campaigns and variations, and
+          whether multi-page targeting is included. A request over a limit returns `403 forbidden`
+          and creates nothing.
+
+        `trafficSplit` is keyed by `Control` and `Test` here, because the variation ids do not
+        exist until this call returns. Everywhere else it is keyed by variation id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCampaignRequest'
+            examples:
+              generalOnePage:
+                summary: General campaign on one page
+                value:
+                  name: Free delivery bar for returning buyers
+                  url: https://shop.example.com/
+                  segmentId: audience_id
+                  segmentValue: returning_buyer
+                  externalId: CMP-1024
+              abTestManyPages:
+                summary: A/B test across dairy and bakery pages (multi-page targeting)
+                value:
+                  name: Breakfast banner on dairy and bakery pages
+                  url: https://shop.example.com/dairy/whole-milk
+                  segmentId: audience_id
+                  segmentValue: breakfast_shopper
+                  type: abTest
+                  pageTargeting: multiple
+                  slug: dairy
+                  condition: included
+                  list: [dairy, bakery]
+                  trafficSplit:
+                    Control: 60
+                    Test: 40
+      responses:
+        '201':
+          description: Created. The campaign, with an editor link for each variation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedCampaignEnvelope'
+              examples:
+                generalOnePage:
+                  summary: General campaign on one page
+                  value:
+                    data:
+                      id: 671a3c90e4b0a1f2c3d40011
+                      externalId: CMP-1024
+                      name: Free delivery bar for returning buyers
+                      status: paused
+                      domain: https://shop.example.com
+                      script:
+                        status: checking
+                        checkedAt: null
+                      createdAt: '2026-10-20T09:30:12.418Z'
+                      updatedAt: '2026-10-20T09:30:12.702Z'
+                      type: general
+                      pageTargeting: specific
+                      segmentId: audience_id
+                      segmentValue: returning_buyer
+                      variations:
+                        - id: 671a3c90e4b0a1f2c3d40012
+                          name: Free delivery bar for returning buyers - Variation
+                          type: variant
+                          previewUrl: 'https://shop.example.com/?...'
+                          editUrl: 'https://services.grona.ai/...'
+                          generatedAt: '2026-10-20T09:30:12.000Z'
+                          expiresAt: '2026-10-20T09:45:12.731Z'
+                    meta:
+                      workspaceId: 65e8a1c47d2f9b03e6a15c42
+                abTestManyPages:
+                  summary: A/B test across dairy and bakery pages (multi-page targeting)
+                  value:
+                    data:
+                      id: 671a3d52e4b0a1f2c3d40021
+                      externalId: null
+                      name: Breakfast banner on dairy and bakery pages
+                      status: paused
+                      domain: https://shop.example.com
+                      script:
+                        status: checking
+                        checkedAt: null
+                      createdAt: '2026-10-20T10:02:44.105Z'
+                      updatedAt: '2026-10-20T10:02:44.391Z'
+                      type: abTest
+                      pageTargeting: multiple
+                      segmentId: audience_id
+                      segmentValue: breakfast_shopper
+                      url: https://shop.example.com/dairy/whole-milk
+                      slug: dairy
+                      condition: included
+                      list: [dairy, bakery]
+                      trafficSplit:
+                        671a3d52e4b0a1f2c3d40022: 60
+                        671a3d52e4b0a1f2c3d40023: 40
+                      variations:
+                        - id: 671a3d52e4b0a1f2c3d40022
+                          name: Control
+                          type: control
+                          previewUrl: 'https://shop.example.com/dairy/whole-milk?...'
+                          editUrl: 'https://services.grona.ai/...'
+                          generatedAt: '2026-10-20T10:02:44.000Z'
+                          expiresAt: '2026-10-20T10:17:44.420Z'
+                        - id: 671a3d52e4b0a1f2c3d40023
+                          name: Test
+                          type: variant
+                          previewUrl: 'https://shop.example.com/dairy/whole-milk?...'
+                          editUrl: 'https://services.grona.ai/...'
+                          generatedAt: '2026-10-20T10:02:44.000Z'
+                          expiresAt: '2026-10-20T10:17:44.426Z'
+                    meta:
+                      workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '400':
+          $ref: '#/components/responses/BadRequestCreate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags: [Campaigns]
+      operationId: list-campaigns
+      summary: List campaigns
+      description: |
+        Returns every campaign in the workspace. v1 has no pagination: the whole list comes back
+        in one response, and `meta.count` is the number of campaigns returned.
+
+        The order of the list is not specified. Sort on your side if you need an order.
+        Variations are listed without editor links; request one with `POST /variations/edit-link`.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignListEnvelope'
+              example:
+                data:
+                  - id: 671a3c90e4b0a1f2c3d40011
+                    externalId: CMP-1024
+                    name: Free delivery bar for returning buyers
+                    status: live
+                    domain: https://shop.example.com
+                    script:
+                      status: present
+                      checkedAt: '2026-10-20T09:30:19.884Z'
+                    createdAt: '2026-10-20T09:30:12.418Z'
+                    updatedAt: '2026-10-20T11:05:37.290Z'
+                    type: general
+                    pageTargeting: specific
+                    segmentId: audience_id
+                    segmentValue: returning_buyer
+                    variations:
+                      - id: 671a3c90e4b0a1f2c3d40012
+                        name: Free delivery bar for returning buyers - Variation
+                        type: variant
+                        previewUrl: 'https://shop.example.com/?...'
+                  - id: 671a3d52e4b0a1f2c3d40021
+                    externalId: null
+                    name: Breakfast banner on dairy and bakery pages
+                    status: paused
+                    domain: https://shop.example.com
+                    script:
+                      status: present
+                      checkedAt: '2026-10-20T10:02:51.016Z'
+                    createdAt: '2026-10-20T10:02:44.105Z'
+                    updatedAt: '2026-10-20T10:02:44.391Z'
+                    type: abTest
+                    pageTargeting: multiple
+                    segmentId: audience_id
+                    segmentValue: breakfast_shopper
+                    url: https://shop.example.com/dairy/whole-milk
+                    slug: dairy
+                    condition: included
+                    list: [dairy, bakery]
+                    trafficSplit:
+                      671a3d52e4b0a1f2c3d40022: 60
+                      671a3d52e4b0a1f2c3d40023: 40
+                    variations:
+                      - id: 671a3d52e4b0a1f2c3d40022
+                        name: Control
+                        type: control
+                        previewUrl: 'https://shop.example.com/dairy/whole-milk?...'
+                      - id: 671a3d52e4b0a1f2c3d40023
+                        name: Test
+                        type: variant
+                        previewUrl: 'https://shop.example.com/dairy/whole-milk?...'
+                meta:
+                  workspaceId: 65e8a1c47d2f9b03e6a15c42
+                  count: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /campaigns/{campaignId}:
+    parameters:
+      - $ref: '#/components/parameters/CampaignId'
+    get:
+      tags: [Campaigns]
+      operationId: get-campaign
+      summary: Get a campaign
+      description: |
+        Returns one campaign, looked up by Grona's id or by your `externalId`. The variations
+        are listed without editor links.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignEnvelope'
+              example:
+                data:
+                  id: 671a3c90e4b0a1f2c3d40011
+                  externalId: CMP-1024
+                  name: Free delivery bar for returning buyers
+                  status: paused
+                  domain: https://shop.example.com
+                  script:
+                    status: present
+                    checkedAt: '2026-10-20T09:30:19.884Z'
+                  createdAt: '2026-10-20T09:30:12.418Z'
+                  updatedAt: '2026-10-20T09:30:12.702Z'
+                  type: general
+                  pageTargeting: specific
+                  segmentId: audience_id
+                  segmentValue: returning_buyer
+                  variations:
+                    - id: 671a3c90e4b0a1f2c3d40012
+                      name: Free delivery bar for returning buyers - Variation
+                      type: variant
+                      previewUrl: 'https://shop.example.com/?...'
+                meta:
+                  workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags: [Campaigns]
+      operationId: update-campaign
+      summary: Update a campaign
+      description: |
+        Send only the fields you want to change. At least one field is required. The response
+        is the whole campaign after the change, including its variations. An unknown campaign
+        id returns `404`; update never creates a campaign.
+
+        A campaign's `type`, `url` and `pageTargeting` are fixed when it is created. Grona ignores
+        a `type` in the body. The call returns `400 invalid_request` and applies nothing when it:
+
+        - sends `url` or `pageTargeting`;
+        - sends `slug`, `condition` or `list` for a `specific` campaign;
+        - sends `trafficSplit` for a `general` campaign, or a split that leaves out a variation
+          or does not total 100;
+        - sends `segmentId` or `segmentValue` for a campaign that has no page variable.
+
+        Sending one of `segmentId` and `segmentValue` keeps the other. v1 cannot remove
+        page-variable targeting from a campaign; create a new campaign instead.
+
+        If you retry an update, address the campaign by Grona's `id`, not by `externalId`. An
+        update can change or clear the `externalId`, and another campaign can then take it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCampaignRequest'
+            examples:
+              pageVariableAndStatus:
+                summary: Change the page variable value and set the campaign live
+                value:
+                  segmentValue: loyal_buyer
+                  status: live
+              splitAndList:
+                summary: Change the split and the page list of a multi-page A/B test
+                value:
+                  trafficSplit:
+                    671a3d52e4b0a1f2c3d40022: 50
+                    671a3d52e4b0a1f2c3d40023: 50
+                  list: [dairy, bakery, cereal]
+      responses:
+        '200':
+          description: The whole campaign after the update.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignEnvelope'
+              example:
+                data:
+                  id: 671a3c90e4b0a1f2c3d40011
+                  externalId: CMP-1024
+                  name: Free delivery bar for returning buyers
+                  status: live
+                  domain: https://shop.example.com
+                  script:
+                    status: present
+                    checkedAt: '2026-10-20T09:30:19.884Z'
+                  createdAt: '2026-10-20T09:30:12.418Z'
+                  updatedAt: '2026-10-20T11:05:37.290Z'
+                  type: general
+                  pageTargeting: specific
+                  segmentId: audience_id
+                  segmentValue: loyal_buyer
+                  variations:
+                    - id: 671a3c90e4b0a1f2c3d40012
+                      name: Free delivery bar for returning buyers - Variation
+                      type: variant
+                      previewUrl: 'https://shop.example.com/?...'
+                meta:
+                  workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '400':
+          $ref: '#/components/responses/BadRequestUpdate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Campaigns]
+      operationId: delete-campaign
+      summary: Delete a campaign
+      description: |
+        Deletes the campaign and the variations created with it. Deletion is permanent and frees
+        the campaign's `externalId` for reuse. `data.id` is always Grona's id, even when you call
+        it with your `externalId`.
+
+        If you retry a delete, address the campaign by Grona's `id`, never by `externalId`. Once
+        the first attempt frees the `externalId`, a retry could delete a new campaign that took it.
+
+        The change can take a short time to reach visitors.
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletedCampaignEnvelope'
+              example:
+                data:
+                  id: 671a3c90e4b0a1f2c3d40011
+                  deletedVariationIds: [671a3c90e4b0a1f2c3d40012]
+                meta:
+                  workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /campaigns/{campaignId}/status:
+    parameters:
+      - $ref: '#/components/parameters/CampaignId'
+    patch:
+      tags: [Campaigns]
+      operationId: set-campaign-status
+      summary: Set a campaign live or paused
+      description: |
+        `live` runs the campaign and `paused` stops it. Any other value returns `400`.
+
+        The change can take a short time to reach visitors, in either direction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: live
+      responses:
+        '200':
+          description: The status after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusEnvelope'
+              example:
+                data:
+                  status: live
+                meta:
+                  workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '400':
+          $ref: '#/components/responses/BadRequestStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /variations/edit-link:
+    post:
+      tags: [Editor links]
+      operationId: create-edit-link
+      summary: Create an editor link
+      description: |
+        Returns a new editor link for a variation. The link expires 15 minutes after
+        `generatedAt`; `generatedAt` and `expiresAt` describe `editUrl` only.
+
+        Identify the variation by `variationId` (preferred) or by its page `url`.
+
+        The token travels in the query string, and anyone who holds a live link gets an editor
+        session. Open the link right away and do not store, log or forward it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditLinkRequest'
+            example:
+              variationId: 671a3c90e4b0a1f2c3d40012
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EditLinkEnvelope'
+              example:
+                data:
+                  editUrl: 'https://services.grona.ai/...'
+                  variationId: 671a3c90e4b0a1f2c3d40012
+                  previewUrl: 'https://shop.example.com/?...'
+                  generatedAt: '2026-10-20T11:12:05.000Z'
+                  expiresAt: '2026-10-20T11:27:05.614Z'
+                meta:
+                  workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '400':
+          $ref: '#/components/responses/BadRequestVariation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/VariationNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /variations/edit-link/validate:
+    post:
+      tags: [Editor links]
+      operationId: validate-edit-link
+      summary: Check an editor link and refresh it if needed
+      description: |
+        Send an editor link you are holding. While it is still valid, the same link comes back,
+        and `generatedAt` and `expiresAt` describe it. When it has expired or is close to
+        expiring, the response carries a new link with a full 15-minute lifetime. Either way the
+        status is `200`, and `data.editUrl` is the link to open, so you do not need to branch on
+        `valid`.
+
+        A value that is not a Grona editor link returns `400`. A link for a variation outside your
+        workspace, or one that no longer exists, returns `404`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditLinkValidateRequest'
+            example:
+              editUrl: 'https://services.grona.ai/...'
+      responses:
+        '200':
+          description: The link to open, either the one you sent or a new one.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EditLinkValidateEnvelope'
+              examples:
+                stillValid:
+                  summary: Still valid, returned unchanged
+                  value:
+                    data:
+                      valid: true
+                      refreshed: false
+                      editUrl: 'https://services.grona.ai/...'
+                      variationId: 671a3c90e4b0a1f2c3d40012
+                      generatedAt: '2026-10-20T11:12:05.000Z'
+                      expiresAt: '2026-10-20T11:27:05.614Z'
+                    meta:
+                      workspaceId: 65e8a1c47d2f9b03e6a15c42
+                refreshed:
+                  summary: Expired or close to expiring, replaced with a new link
+                  value:
+                    data:
+                      valid: false
+                      refreshed: true
+                      editUrl: 'https://services.grona.ai/...'
+                      variationId: 671a3c90e4b0a1f2c3d40012
+                      generatedAt: '2026-10-20T13:41:09.000Z'
+                      expiresAt: '2026-10-20T13:56:09.327Z'
+                    meta:
+                      workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '400':
+          $ref: '#/components/responses/BadRequestEditUrl'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/VariationNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /websites/verify-script:
+    post:
+      tags: [Websites]
+      operationId: verify-script
+      summary: Check whether the Grona Embed snippet is on a page
+      description: |
+        Grona checks the page at `url` for your Grona Embed snippet and returns `present` or
+        `absent`. `absent` also covers a page Grona could not load. The check covers the one
+        page you send, not the whole site.
+
+        The call waits for the check and can take several seconds, so set a generous client
+        timeout. See [Verify installations](/api/verify-installations/).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyScriptRequest'
+            example:
+              url: https://shop.example.com/
+      responses:
+        '200':
+          description: The result of the check.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyScriptEnvelope'
+              examples:
+                present:
+                  summary: Snippet found
+                  value:
+                    data:
+                      url: https://shop.example.com/
+                      script:
+                        status: present
+                        checkedAt: '2026-10-20T09:28:43.162Z'
+                    meta:
+                      workspaceId: 65e8a1c47d2f9b03e6a15c42
+                absent:
+                  summary: Snippet not found, or the page could not be loaded
+                  value:
+                    data:
+                      url: https://shop.example.com/recipes/
+                      script:
+                        status: absent
+                        checkedAt: '2026-10-20T09:29:05.471Z'
+                    meta:
+                      workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '400':
+          $ref: '#/components/responses/BadRequestUrl'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /v1/mobile/grants:
+    servers:
+      - url: https://api.grona.ai
+        description: Mobile grants host.
+    post:
+      tags: [Mobile grants]
+      operationId: issue-grants
+      security:
+        - mobileSecretKeyBearer: []
+      summary: Fetch grants for a shopper
+      description: |
+        Returns the currently valid grants for one signed-in shopper. Call it from your
+        backend, with your Grona secret key, inside the shopper's authenticated session, then
+        hand the grants to the app unchanged. Take `customerId` from that session, never from a
+        value the app sends.
+
+        This endpoint is on https://api.grona.ai, not under the base URL above. It is available
+        on request and is not part of Grona Embed. Grona gives you your Grona secret key when you
+        get access.
+
+        Each grant is a token signed by Grona. Do not cache grants past their `exp` or share
+        them between shoppers. An empty list means no grant applies to this shopper right now.
+
+        Repeat calls for the same customer return that customer's currently valid grants rather
+        than new ones, so the call is safe to retry.
+
+        Grona has no endpoint to redeem a grant. Your order backend verifies each grant itself
+        at order time and makes sure each grant `jti` is used only once. If an offer must apply
+        once per customer rather than once per grant, your order backend enforces that too. See
+        [Grants and order verification](/mobile/backend/grants-and-orders/).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantRequest'
+            example:
+              customerId: cus_7Hq2Lm9x
+      responses:
+        '200':
+          description: The shopper's grants. Empty when none apply.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrantEnvelope'
+              example:
+                data:
+                  grants:
+                    - <grant token>
+                meta:
+                  workspaceId: 65e8a1c47d2f9b03e6a15c42
+        '400':
+          $ref: '#/components/responses/BadRequestGrant'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/MobileTooManyRequests'
+        '500':
+          $ref: '#/components/responses/MobileInternalError'
+        '503':
+          $ref: '#/components/responses/MobileServiceUnavailable'
+components:
+  securitySchemes:
+    secretKeyBearer:
+      type: http
+      scheme: bearer
+      description: |
+        Your workspace secret key in the `Authorization` header, as `Bearer YOUR_SECRET_KEY`.
+        Server to server only: never put it in a browser, a mobile app or a public repository.
+        The key decides the workspace.
+    secretKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: The same workspace secret key, sent in the `X-API-Key` header instead of `Authorization`.
+    mobileSecretKeyBearer:
+      type: http
+      scheme: bearer
+      description: |
+        Mobile grants only. Your Grona secret key (Grona gives it to you) in the `Authorization`
+        header, as `Bearer YOUR_SECRET_KEY`. Server to server only: never put it in the app.
+  parameters:
+    CampaignId:
+      name: campaignId
+      in: path
+      required: true
+      description: |
+        Grona's campaign id or your `externalId`.
+        A value that matches no campaign in the workspace returns `404`.
+      schema:
+        type: string
+      example: CMP-1024
+  headers:
+    RetryAfter:
+      description: How many seconds to wait before retrying.
+      schema:
+        type: integer
+        minimum: 1
+      example: 30
+    MobileRetryAfter:
+      description: How long to wait before retrying, in seconds or as an HTTP date.
+      schema:
+        type: string
+  responses:
+    BadRequestCreate:
+      description: |
+        The request is invalid, for example a missing `name`, `url`, `segmentId` or
+        `segmentValue`, a field that does not apply to this kind of campaign, or a body that is
+        not valid JSON. `error.code` is `invalid_request` and `error.message` says what to change.
+        Nothing was created.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_request
+              message: '`segmentId` is required.'
+    BadRequestUpdate:
+      description: |
+        The request is invalid, for example it sends a field that is fixed at creation.
+        `error.code` is `invalid_request` and `error.message` says what to change. Nothing in
+        the request was applied.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_request
+              message: '`url` cannot be changed; create a new campaign for a different page.'
+    BadRequestStatus:
+      description: |
+        `status` is not `live` or `paused`. `error.code` is `invalid_request`. Nothing was changed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_request
+              message: '`status` must be "live" or "paused".'
+    BadRequestVariation:
+      description: |
+        Neither `variationId` nor `url` was sent, or `variationId` is not a valid id.
+        `error.code` is `invalid_request`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_request
+              message: Invalid variation id.
+    BadRequestEditUrl:
+      description: |
+        `editUrl` is missing or is not a Grona editor link. `error.code` is `invalid_request`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_request
+              message: This editor link is not recognized.
+    BadRequestUrl:
+      description: |
+        `url` is missing or is not an `http` or `https` URL. `error.code` is `invalid_request`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_request
+              message: '`url` must be an http(s) URL.'
+    BadRequestGrant:
+      description: |
+        `customerId` is missing, or is not 1 to 128 letters, digits, `.`, `_`, `:` or `-`.
+        `error.code` is `invalid_request`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: invalid_request
+              message: '`customerId` must be 1 to 128 letters, digits, `.`, `_`, `:` or `-`.'
+    Unauthorized:
+      description: |
+        The secret key is missing, invalid or revoked. `error.code` is `unauthorized`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: unauthorized
+              message: Invalid or missing API key.
+    Forbidden:
+      description: |
+        The request goes beyond your plan, for example the number of websites, campaigns or
+        variations, or multi-page targeting on a plan that does not include it. `error.code` is
+        `forbidden` and `error.message` says which limit applies. Nothing was created.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: forbidden
+              message: Your plan does not include multi-page (batch) campaigns.
+    NotFound:
+      description: |
+        No campaign with this id or `externalId` exists in the key's workspace. `error.code` is
+        `not_found`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: not_found
+              message: Campaign not found.
+    VariationNotFound:
+      description: |
+        No variation matches in the key's workspace, for example because its campaign was
+        deleted. `error.code` is `not_found`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: not_found
+              message: Variation not found.
+    Conflict:
+      description: |
+        The `externalId` is already used by another campaign in the workspace. `error.code` is
+        `conflict`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: conflict
+              message: '`externalId` "CMP-1024" is already used by another campaign in this workspace.'
+    TooManyRequests:
+      description: |
+        Too many requests. `error.code` is `rate_limited`. Wait for the number of
+        seconds in `Retry-After`, then retry.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: rate_limited
+              message: Rate limit exceeded. Retry later.
+    InternalError:
+      description: |
+        Unexpected server error. `error.code` is `internal`. Retry with backoff; if it
+        persists, contact support@grona.ai with the time of the request and the endpoint.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: internal
+              message: An internal error occurred.
+    MobileTooManyRequests:
+      description: |
+        Too many requests. Retry with exponential backoff and jitter, and wait at least as long
+        as `Retry-After` when it is present. Branch on the status code; the body is not
+        guaranteed to use the error envelope.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/MobileRetryAfter'
+    MobileServiceUnavailable:
+      description: |
+        Temporarily unavailable. Retry with exponential backoff and jitter, and wait at least as
+        long as `Retry-After` when it is present. Branch on the status code; the body is not
+        guaranteed to use the error envelope.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/MobileRetryAfter'
+    MobileInternalError:
+      description: |
+        Unexpected server error. `error.code` is `internal`. Retry with backoff; if it
+        persists, contact support@grona.ai with the time of the request and the endpoint.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MobileError'
+          example:
+            error:
+              code: internal
+              message: Something went wrong on our side.
+  schemas:
+    ExternalId:
+      type: string
+      pattern: '^[A-Za-z0-9_.:-]{1,128}$'
+      description: |
+        Your own id for a campaign: 1 to 128 letters, digits, `_`, `.`, `:` or `-`. Unique per
+        workspace. A UUID or a number sent as a string both work.
+      examples: [CMP-1024]
+    Timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 in UTC, with millisecond precision.
+    CampaignStatus:
+      type: string
+      enum: [live, paused]
+      description: '`live` runs the campaign. `paused` stops it. New campaigns start `paused`.'
+    CampaignType:
+      type: string
+      enum: [general, abTest]
+      description: '`general` creates one variation. `abTest` creates two, Control and Test.'
+    PageTargeting:
+      type: string
+      enum: [specific, multiple]
+      description: |
+        `specific` runs on the one page in `url`. An A/B test on one page needs the address to
+        match `url` exactly, query string included. `multiple` runs on every page matched by
+        `slug`, `condition` and `list`.
+    PageCondition:
+      type: string
+      enum: [included, not_included]
+      description: |
+        Only for `multiple` campaigns. Grona compares a page only when it is on the same origin as
+        the sample `url` and its path has the same number of segments. It takes the path segment
+        at the same position as `slug` in the sample `url`. `included` matches pages whose segment
+        there is in `list`. `not_included` matches pages whose segment there is not in `list`,
+        which can be far more pages than you intend, so check which pages it matches before you
+        set the campaign live. A page on another origin, or with a different number of segments,
+        never matches, whichever condition you use.
+    PageVariableName:
+      type: string
+      pattern: '^[A-Za-z_][A-Za-z0-9_]{0,127}$'
+      description: |
+        The name of a variable your page sets on `window`: letters, digits and `_`, not
+        starting with a digit, at most 128 characters. Names the browser already defines, such
+        as `name`, `location`, `status`, `top`, `parent` and `history`, are rejected.
+      examples: [audience_id]
+    PageVariableValue:
+      type: string
+      pattern: '^[A-Za-z0-9_.:-]{1,128}$'
+      description: |
+        The value the page variable must hold for a visitor to be eligible: 1 to 128
+        letters, digits, `_`, `.`, `:` or `-`. Compared as an exact string match.
+      examples: [returning_buyer]
+    PageList:
+      type: array
+      description: |
+        The path segments to compare against: 1 to 50 non-empty strings of at most 200
+        characters each. Surrounding spaces are trimmed and duplicates are dropped.
+      minItems: 1
+      maxItems: 50
+      items:
+        type: string
+        minLength: 1
+        maxLength: 200
+    ScriptCheck:
+      type: object
+      description: Whether the Grona Embed snippet was found on the campaign's website.
+      required: [status, checkedAt]
+      properties:
+        status:
+          type: string
+          enum: [checking, present, absent, unknown]
+          description: |
+            `checking`: a check is running. `present`: the snippet was found. `absent`: the
+            snippet was not found, or Grona could not load the page. `unknown`: no check is
+            running and none has completed.
+        checkedAt:
+          description: When the last check completed. `null` until one has.
+          oneOf:
+            - $ref: '#/components/schemas/Timestamp'
+            - type: 'null'
+    VariationRole:
+      type: string
+      enum: [control, variant]
+      description: |
+        `control` for the control variation, `variant` otherwise. In an A/B test, Control reads
+        `control` and Test reads `variant`. A general campaign has no control, so do not rely on
+        `type` there. A variation whose `name` is `null` reads `variant`.
+    Variation:
+      type: object
+      required: [id, name, type, previewUrl]
+      properties:
+        id:
+          type: string
+          description: The variation id. Use it for editor links and in `trafficSplit` on update.
+        name:
+          type: [string, 'null']
+          description: Set by Grona. `null` when the campaign refers to a variation that no longer exists.
+        type:
+          $ref: '#/components/schemas/VariationRole'
+        previewUrl:
+          type: [string, 'null']
+          format: uri
+          description: |
+            A link that opens the campaign's page with the variation's saved changes, whether
+            or not the campaign is live. Anyone who has the link can see the variation, so share it
+            only with people who should. `null` when the variation no longer exists or has no usable
+            page.
+    VariationWithEditLink:
+      allOf:
+        - $ref: '#/components/schemas/Variation'
+        - type: object
+          required: [editUrl, generatedAt, expiresAt]
+          properties:
+            editUrl:
+              type: string
+              format: uri
+              description: Editor link for this variation. It expires 15 minutes after `generatedAt`.
+            generatedAt:
+              $ref: '#/components/schemas/Timestamp'
+            expiresAt:
+              $ref: '#/components/schemas/Timestamp'
+    TrafficSplitByRole:
+      type: object
+      description: |
+        Create only. Whole numbers for `Control` and `Test` that total 100. Keyed by role
+        because the variation ids do not exist yet.
+      required: [Control, Test]
+      properties:
+        Control:
+          type: integer
+          minimum: 0
+          maximum: 100
+        Test:
+          type: integer
+          minimum: 0
+          maximum: 100
+      additionalProperties: false
+    TrafficSplitById:
+      type: object
+      description: |
+        Keyed by variation id, whole numbers from 0 to 100. On update, every variation of the
+        A/B test must appear, no other id may appear, and the values must total 100.
+      additionalProperties:
+        type: integer
+        minimum: 0
+        maximum: 100
+    CampaignFields:
+      type: object
+      required: [id, externalId, name, status, domain, script, createdAt, updatedAt, type, pageTargeting, segmentId, segmentValue]
+      properties:
+        id:
+          type: string
+          description: Grona's campaign id.
+        externalId:
+          description: Your own id, or `null` if none is set.
+          oneOf:
+            - $ref: '#/components/schemas/ExternalId'
+            - type: 'null'
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/CampaignStatus'
+        domain:
+          type: [string, 'null']
+          description: The website the campaign runs on, resolved from its `url`.
+        script:
+          $ref: '#/components/schemas/ScriptCheck'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+        type:
+          $ref: '#/components/schemas/CampaignType'
+        pageTargeting:
+          $ref: '#/components/schemas/PageTargeting'
+        segmentId:
+          description: |
+            The page variable's name. `null` only for a campaign that was not created with a page
+            variable, such as one built in the Grona Embed dashboard.
+          oneOf:
+            - $ref: '#/components/schemas/PageVariableName'
+            - type: 'null'
+        segmentValue:
+          description: The value the page variable must hold, or `null` when `segmentId` is `null`.
+          oneOf:
+            - $ref: '#/components/schemas/PageVariableValue'
+            - type: 'null'
+        url:
+          type: string
+          format: uri
+          description: Only for `multiple` campaigns. The sample page, stored without its query string or fragment.
+        slug:
+          type: string
+          description: Only for `multiple` campaigns. The sample page's path segment whose position is compared.
+        condition:
+          $ref: '#/components/schemas/PageCondition'
+        list:
+          $ref: '#/components/schemas/PageList'
+          description: Only for `multiple` campaigns. The segments compared against.
+        trafficSplit:
+          $ref: '#/components/schemas/TrafficSplitById'
+      description: |
+        `url`, `slug`, `condition` and `list` appear only on `multiple` campaigns. `trafficSplit`
+        appears on every `abTest` campaign and never on a `general` one.
+    Campaign:
+      allOf:
+        - $ref: '#/components/schemas/CampaignFields'
+        - type: object
+          required: [variations]
+          properties:
+            variations:
+              type: array
+              description: In creation order, so Control comes first in an A/B test. No editor links.
+              items:
+                $ref: '#/components/schemas/Variation'
+    CreatedCampaign:
+      allOf:
+        - $ref: '#/components/schemas/CampaignFields'
+        - type: object
+          required: [variations]
+          properties:
+            variations:
+              type: array
+              description: One entry for `general`, two for `abTest` in the order Control, Test. Each has an editor link.
+              items:
+                $ref: '#/components/schemas/VariationWithEditLink'
+    CreateCampaignRequest:
+      type: object
+      required: [name, url, segmentId, segmentValue]
+      description: |
+        A visitor is eligible when the page variable `segmentId` holds `segmentValue`.
+        `trafficSplit` is for `abTest` campaigns only. `slug`, `condition` and `list` are for
+        `multiple` campaigns only. Sending any of these with the wrong kind of campaign
+        returns `400`.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Campaign name.
+        url:
+          type: string
+          format: uri
+          description: |
+            An `http` or `https` URL of the page the campaign runs on. With `pageTargeting`
+            `multiple`, a sample page of the kind you want to cover; the editor opens this page,
+            and its path must not contain `;`, quotes or backslashes. It cannot be changed later.
+        externalId:
+          $ref: '#/components/schemas/ExternalId'
+        segmentId:
+          $ref: '#/components/schemas/PageVariableName'
+        segmentValue:
+          $ref: '#/components/schemas/PageVariableValue'
+        type:
+          $ref: '#/components/schemas/CampaignType'
+          default: general
+        pageTargeting:
+          $ref: '#/components/schemas/PageTargeting'
+          default: specific
+        trafficSplit:
+          $ref: '#/components/schemas/TrafficSplitByRole'
+          description: '`abTest` only. Optional; the default is 50 and 50. Sending it for a `general` campaign returns `400`.'
+        slug:
+          type: string
+          description: |
+            Required with `multiple`. One segment of the sample `url`'s path, spelled
+            exactly as it appears there. On each page, Grona takes the path segment at the same
+            position and compares it with each entry of `list`. The comparison is exact and
+            case-sensitive. A page on another origin, or with a different number of segments from
+            the sample `url`, never matches, whichever `condition` you use.
+        condition:
+          $ref: '#/components/schemas/PageCondition'
+          default: included
+        list:
+          $ref: '#/components/schemas/PageList'
+          description: Required with `multiple`. The path segments to compare against.
+    UpdateCampaignRequest:
+      type: object
+      minProperties: 1
+      description: |
+        At least one field. `url` and `pageTargeting` cannot be sent. `type` cannot be changed, and
+        Grona ignores it.
+      properties:
+        name:
+          type: string
+          minLength: 1
+        status:
+          $ref: '#/components/schemas/CampaignStatus'
+        externalId:
+          description: Your own id. `null` removes it and frees it for reuse. Sending the campaign's current id is fine.
+          oneOf:
+            - $ref: '#/components/schemas/ExternalId'
+            - type: 'null'
+        segmentId:
+          $ref: '#/components/schemas/PageVariableName'
+        segmentValue:
+          $ref: '#/components/schemas/PageVariableValue'
+        trafficSplit:
+          $ref: '#/components/schemas/TrafficSplitById'
+        slug:
+          type: string
+          description: Only for `multiple` campaigns. A new segment of the sample `url`'s path, spelled exactly as it appears there.
+        condition:
+          $ref: '#/components/schemas/PageCondition'
+        list:
+          $ref: '#/components/schemas/PageList'
+          description: Only for `multiple` campaigns. The whole new list. It replaces the old one.
+    StatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/CampaignStatus'
+    EditLinkRequest:
+      type: object
+      description: Send `variationId`, or `url` when you do not have the id. If both are sent, `variationId` is used.
+      anyOf:
+        - required: [variationId]
+        - required: [url]
+      properties:
+        variationId:
+          type: string
+          description: A variation id from `variations[].id` on create, list or get.
+        url:
+          type: string
+          format: uri
+          description: The variation's page. If several variations share the page, the most recently updated one is used.
+    EditLinkValidateRequest:
+      type: object
+      required: [editUrl]
+      properties:
+        editUrl:
+          type: string
+          format: uri
+          description: The whole link exactly as Grona returned it.
+    VerifyScriptRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: An `http` or `https` page URL.
+    Meta:
+      type: object
+      required: [workspaceId]
+      properties:
+        workspaceId:
+          type: string
+          description: The workspace resolved from the secret key.
+    ListMeta:
+      allOf:
+        - $ref: '#/components/schemas/Meta'
+        - type: object
+          required: [count]
+          properties:
+            count:
+              type: integer
+              minimum: 0
+              description: The number of campaigns returned.
+    CampaignEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: '#/components/schemas/Campaign'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    CreatedCampaignEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          $ref: '#/components/schemas/CreatedCampaign'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    CampaignListEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Campaign'
+        meta:
+          $ref: '#/components/schemas/ListMeta'
+    DeletedCampaignEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [id, deletedVariationIds]
+          properties:
+            id:
+              type: string
+              description: Grona's id of the deleted campaign.
+            deletedVariationIds:
+              type: array
+              description: The variations deleted with the campaign. A variation another campaign still uses is kept and not listed.
+              items:
+                type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+    StatusEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [status]
+          properties:
+            status:
+              $ref: '#/components/schemas/CampaignStatus'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    EditLinkEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [editUrl, variationId, previewUrl, generatedAt, expiresAt]
+          properties:
+            editUrl:
+              type: string
+              format: uri
+              description: Editor link. It expires 15 minutes after `generatedAt`.
+            variationId:
+              type: string
+            previewUrl:
+              type: [string, 'null']
+              format: uri
+              description: |
+                A link that opens the page with the variation's saved changes. Anyone who has
+                the link can see the variation, so share it only with people who should.
+            generatedAt:
+              $ref: '#/components/schemas/Timestamp'
+            expiresAt:
+              $ref: '#/components/schemas/Timestamp'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    EditLinkValidateEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [valid, refreshed, editUrl, variationId, generatedAt, expiresAt]
+          properties:
+            valid:
+              type: boolean
+              description: '`true` when the link you sent is returned unchanged. Informational, for your logs.'
+            refreshed:
+              type: boolean
+              description: Whether Grona issued a new link.
+            editUrl:
+              type: string
+              format: uri
+              description: The link to open. The one you sent, unchanged, or its replacement.
+            variationId:
+              type: string
+              description: The variation the returned link opens.
+            generatedAt:
+              $ref: '#/components/schemas/Timestamp'
+            expiresAt:
+              $ref: '#/components/schemas/Timestamp'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    VerifyScriptEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [url, script]
+          properties:
+            url:
+              type: string
+              format: uri
+              description: The page that was checked.
+            script:
+              type: object
+              required: [status, checkedAt]
+              properties:
+                status:
+                  type: string
+                  enum: [present, absent]
+                  description: '`absent` also covers a page Grona could not load.'
+                checkedAt:
+                  $ref: '#/components/schemas/Timestamp'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [invalid_request, unauthorized, forbidden, not_found, conflict, rate_limited, internal]
+              description: |
+                Stable and machine-readable. Branch on this, and on the HTTP status for codes you do
+                not know. `invalid_request` 400 (also a body that is not valid JSON),
+                `unauthorized` 401, `forbidden` 403, `not_found` 404 (also an unknown endpoint, with
+                a valid key),
+                `conflict` 409, `rate_limited` 429, `internal` 500.
+            message:
+              type: string
+              description: Human-readable. The wording can change, so do not parse it.
+    MobileError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [invalid_request, unauthorized, forbidden, not_found, conflict, rate_limited, internal]
+              description: Stable and machine-readable. Branch on this, and on the HTTP status for codes you do not know.
+            message:
+              type: string
+              description: Human-readable. The wording can change, so do not parse it.
+    GrantRequest:
+      type: object
+      required: [customerId]
+      properties:
+        customerId:
+          type: string
+          pattern: '^[A-Za-z0-9._:-]{1,128}$'
+          description: |
+            The opaque customer id your app passes to the SDK's `identify`, taken from the
+            shopper's authenticated session: 1 to 128 letters, digits, `.`, `_`, `:` or `-`, the
+            same rule the SDK applies to `identify`. Never an email, a phone number or a national
+            id. It becomes the grant's `sub` claim.
+    GrantEnvelope:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [grants]
+          properties:
+            grants:
+              type: array
+              description: |
+                The customer's currently valid grants, as token strings. Return them to the app
+                unchanged. Your order backend verifies each one at order time.
+              items:
+                type: string
+                maxLength: 4096
+        meta:
+          $ref: '#/components/schemas/Meta'

@@ -1,0 +1,167 @@
+Versioning and deprecation | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+Changes that can ship in v1
+Breaking changes
+Write a client that keeps working
+Stay informed
+On this page
+Overview
+Changes that can ship in v1
+Breaking changes
+Write a client that keeps working
+Stay informed
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+API reference
+/
+Guides
+Versioning and deprecation
+The Public API is versioned in the path: every endpoint of this version sits under
+/api/public/v1
+. This page explains which changes can reach v1 without notice, how a breaking change is introduced, and how to write a client that keeps working as the API grows.
+Changes that can ship in v1
+Section titled “Changes that can ship in v1”
+Grona adds to v1 without changing the version. These changes can appear at any time:
+new fields in responses, including new fields inside existing objects;
+new endpoints;
+new optional request parameters and body fields;
+new values in response enums, such as a new
+status
+,
+script.status
+, variation
+type
+or
+error.code
+.
+Watch the
+Public API changelog
+for them.
+Breaking changes
+Section titled “Breaking changes”
+A breaking change is one that could stop a correct v1 client from working: removing or renaming a field or an endpoint, changing a field’s type or meaning, or making an optional parameter required.
+Breaking changes ship under a new version path, such as
+/api/public/v2
+, never inside
+/api/public/v1
+. They are announced in the
+changelog
+before the old version is retired.
+Write a client that keeps working
+Section titled “Write a client that keeps working”
+Because v1 grows by addition, a client that follows these rules does not break when Grona ships a change inside v1:
+Ignore unknown fields.
+Do not fail when a response has a field you did not expect, and do not use strict schema validation that rejects extra properties.
+Handle unknown enum values.
+Give every
+switch
+on
+status
+,
+script.status
+, variation
+type
+or
+error.code
+a default branch. For an unknown
+error.code
+, fall back to the HTTP status.
+Do not depend on order.
+Do not depend on the order of fields in an object, or of campaigns in a list response. The one order v1 promises is
+variations
+: creation order, Control before Test.
+Do not parse ids or messages.
+Ids are opaque strings and error messages are for people.
+Send only the fields you mean to change.
+On update, leave out fields you are not changing so a new field’s default is never overwritten.
+Stay informed
+Section titled “Stay informed”
+Watch the
+Public API changelog
+for new fields, endpoints and announcements of new versions. For questions about a change, email
+support@grona.ai
+.
+Previous
+Errors
+Next
+Overview
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

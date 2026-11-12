@@ -1,0 +1,583 @@
+Errors | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+The error body
+Error codes
+Common causes of 400
+Retry temporary failures
+Contact support
+On this page
+Overview
+The error body
+Error codes
+Common causes of 400
+Retry temporary failures
+Contact support
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+API reference
+/
+Guides
+Errors
+When a call fails, the Public API returns an HTTP status and, for most failures, an error body with a stable code. This page lists every code, the usual causes and the fix, and explains how to retry the failures that are temporary.
+The error body
+Section titled “The error body”
+Every error the Public API returns, including
+429
+, uses one shape:
+{
+"error"
+: {
+"code"
+:
+"invalid_request"
+,
+"message"
+:
+"`url` cannot be changed; create a new campaign for a different page."
+}
+}
+code
+is stable and machine-readable. Branch on it.
+message
+is for people. Its wording can change, so log it but do not parse it.
+Treat a
+code
+you do not recognise by its HTTP status. New codes can be added within v1.
+A request that fails with
+400
+changes nothing, even when only one of its fields was at fault.
+Error codes
+Section titled “Error codes”
+HTTP
+error.code
+Meaning
+How to fix
+400
+invalid_request
+The request is malformed or breaks a rule, for example a missing field, a bad format or a field that does not apply to this campaign.
+Read
+message
+, correct the request and send it again. See the common causes below.
+401
+unauthorized
+The secret key is missing, malformed, unknown or revoked.
+Check the header and the key. See
+Authentication
+. Do not retry until the key changes.
+403
+forbidden
+The request goes beyond your plan, for example the number of websites, campaigns or variations, or multi-page targeting on a plan that does not include it. Nothing was created.
+Read
+message
+to see which limit applies. Stay within it or change your plan.
+404
+not_found
+No campaign or variation with this id exists in the key’s workspace, or the endpoint does not exist.
+Check the id, or the
+externalId
+you looked up. An id from another workspace also returns
+404
+.
+409
+conflict
+The
+externalId
+is already used by another campaign in the workspace.
+Use a different
+externalId
+, or, if you were retrying a create, fetch the existing campaign. See
+Conventions
+.
+429
+rate_limited
+Too many requests.
+Wait for the number of seconds in
+Retry-After
+, then retry.
+500
+internal
+Something failed on Grona’s side.
+Retry with backoff. If it persists, contact support.
+Other
+5xx
+none guaranteed
+A gateway in front of the API could not complete the request.
+Retry with exponential backoff and jitter.
+A
+5xx
+from a gateway may not use the JSON envelope, so decide on the status code alone.
+An unknown endpoint needs a valid key to return
+404
+. Without a valid key it returns
+401
+, like every endpoint under
+/api/public/v1
+.
+Common causes of
+400
+Section titled “Common causes of 400”
+Cause
+Fix
+The body is not valid JSON.
+Send a JSON body with
+Content-Type: application/json
+.
+name
+,
+url
+,
+segmentId
+or
+segmentValue
+missing on create.
+Send all four.
+segmentId
+is not a valid name: it starts with a digit, has characters other than letters, digits and
+_
+, is longer than 128 characters, or is a name the browser already defines such as
+name
+,
+location
+,
+status
+,
+top
+,
+parent
+or
+history
+.
+Rename the page variable, for example to
+audience_id
+.
+segmentValue
+has characters other than letters, digits,
+_
+,
+.
+,
+:
+and
+-
+, or is longer than 128 characters.
+Use a value such as
+returning_buyer
+.
+segmentId
+or
+segmentValue
+sent on an update to a campaign that has no page variable.
+Create a new campaign with a page variable.
+trafficSplit
+sent for a
+general
+campaign.
+Leave it out, or create the campaign with
+type: "abTest"
+.
+trafficSplit
+values do not total 100, or an update leaves out one of the variations.
+Send whole numbers for every variation that total 100.
+slug
+,
+condition
+or
+list
+sent without
+pageTargeting: "multiple"
+, or
+multiple
+sent without
+slug
+or
+list
+.
+Send
+slug
+and
+list
+with
+multiple
+, or leave all three out.
+slug
+is not a segment of the path in
+url
+.
+Use a segment of the sample
+url
+, spelled exactly as it appears there.
+list
+is empty or has more than 50 entries.
+Send 1 to 50 entries.
+Update sends
+url
+or
+pageTargeting
+.
+These are fixed at creation. Create a new campaign instead.
+Update has no field to change, for example an empty body. Grona ignores
+type
+, so it does not count.
+Send at least one field.
+status
+is not
+live
+or
+paused
+.
+Send one of the two.
+A
+variationId
+is not a valid id, or edit-link has neither
+variationId
+nor
+url
+.
+Use a variation id from a Grona response, or send the variation’s page as
+url
+.
+The
+url
+sent to verify-script is not an
+http
+or
+https
+URL.
+Send a full page URL.
+The
+editUrl
+sent to validate is not a Grona editor link.
+Send the whole link exactly as Grona issued it.
+The
+customerId
+sent to mobile grants is missing, or is not 1 to 128 letters, digits,
+.
+,
+_
+,
+:
+or
+-
+.
+Send the opaque customer id from the shopper’s session.
+Retry temporary failures
+Section titled “Retry temporary failures”
+429
+and every
+5xx
+can succeed on a later attempt. Network timeouts can too. Retry them with exponential backoff and full jitter, and when the response has a
+Retry-After
+header, wait at least that long. On a
+429
+it is a whole number of seconds. The sample below also accepts an HTTP date, in case a gateway sends one. Grona publishes no fixed rate limits, so do not hard-code a request rate; let
+429
+responses slow you down.
+Not every request is safe to repeat blindly:
+Request
+Safe to retry?
+GET
+list and get
+Yes.
+PATCH
+update and set status
+Yes, by Grona’s campaign
+id
+. Sending the same fields again gives the same result. Do not retry by
+externalId
+: an update can change or clear it, and another campaign can then take it.
+DELETE
+Yes, by Grona’s campaign
+id
+. If the first attempt succeeded, the retry returns
+404
+; treat that as done. Never retry a delete by
+externalId
+: once the first attempt frees it, a retry can delete a new campaign that took it.
+POST /campaigns
+Only with an
+externalId
+. A retry of a create that already succeeded then returns
+409
+, and you fetch the campaign by its
+externalId
+. Without one, a retry can create a duplicate.
+POST
+edit-link, validate and verify-script
+Yes. Each call returns a fresh answer.
+POST /v1/mobile/grants
+Yes. Repeat calls for the same customer return that customer’s currently valid grants. Grona does not mint a new grant for a campaign while an unexpired one exists for that customer, so a retry cannot multiply the grants a shopper can redeem.
+Do not retry
+400
+,
+401
+,
+403
+,
+404
+or
+409
+unchanged. They fail the same way until you change the request.
+// retry.mjs: a fetch wrapper for the Grona Public API (Node 18 or later).
+const
+RETRYABLE
+=
+new
+Set
+([
+429
+,
+500
+,
+502
+,
+503
+,
+504
+]);
+function
+retryAfterMs
+(
+res
+) {
+const
+value
+=
+res.headers.
+get
+(
+'retry-after'
+);
+if
+(
+!
+value)
+return
+0
+;
+const
+seconds
+=
+Number
+(value);
+if
+(
+!
+Number.
+isNaN
+(seconds))
+return
+seconds
+*
+1000
+;
+return
+Math.
+max
+(
+0
+, Date.
+parse
+(value)
+-
+Date.
+now
+());
+}
+export
+async
+function
+gronaFetch
+(
+path
+,
+init
+=
+{},
+maxAttempts
+=
+5
+) {
+for
+(
+let
+attempt
+=
+1
+; ; attempt
+++
+) {
+const
+res
+=
+await
+fetch
+(
+`https://services.grona.ai/api/public/v1${
+path
+}`
+, {
+...
+init,
+headers:
+{
+Authorization:
+`Bearer ${
+process.env.
+GRONA_SECRET_KEY
+}`
+,
+'Content-Type'
+:
+'application/json'
+,
+...
+init.
+headers
+,
+},
+});
+if
+(
+!
+RETRYABLE
+.
+has
+(res.
+status
+)
+||
+attempt
+===
+maxAttempts)
+return
+res;
+const
+backoff
+=
+Math.
+random
+()
+*
+Math.
+min
+(
+30_000
+,
+500
+*
+2
+**
+attempt);
+// full jitter
+await
+new
+Promise
+((
+r
+)
+=>
+setTimeout
+(r, Math.
+max
+(backoff,
+retryAfterMs
+(res))));
+}
+}
+Note
+Only wrap requests that are safe to retry, as listed above. Send creates through it only when they carry an
+externalId
+, and updates and deletes only when the path uses Grona’s campaign
+id
+.
+Contact support
+Section titled “Contact support”
+If an error persists or does not match this page, email
+support@grona.ai
+with the time of the request in UTC, the method and path, the HTTP status and the
+error.code
+. Never include your secret key.
+Previous
+Conventions
+Next
+Versioning and deprecation
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms

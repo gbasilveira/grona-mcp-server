@@ -1,0 +1,240 @@
+Install the Grona Embed snippet | Grona Developers
+Skip to content
+Grona Developers
+Docs
+Search docs
+Ctrl
+K
+Cancel
+Select theme
+Dark
+Light
+Auto
+Log in
+Get API access
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Menu
+Get started
+Website
+Mobile SDKs
+API reference
+Changelog
+Guides
+Overview
+Authentication
+Install the snippet
+Create campaigns from your platform
+Visual editor links
+Verify installations
+Mobile grants API
+Conventions
+Errors
+Versioning and deprecation
+Endpoints
+Overview
+Campaigns
+Overview
+List campaigns
+GET
+Create a campaign
+POST
+Get a campaign
+GET
+Delete a campaign
+DELETE
+Update a campaign
+PATCH
+Set a campaign live or paused
+PATCH
+Editor links
+Overview
+Create an editor link
+POST
+Check an editor link and refresh it if needed
+POST
+Websites
+Overview
+Check whether the Grona Embed snippet is on a page
+POST
+Mobile grants
+Overview
+Fetch grants for a shopper
+POST
+Log in
+Get API access
+Select theme
+Dark
+Light
+Auto
+On this page
+Overview
+Add the snippet
+Set your page variable
+Check the install
+Content Security Policy
+Next steps
+On this page
+Overview
+Add the snippet
+Set your page variable
+Check the install
+Content Security Policy
+Next steps
+The Public API is available on request. It needs a Grona Embed workspace: email
+support@grona.ai
+to request one, then manage your key in
+Settings > Secrets
+.
+API reference
+/
+Guides
+Install the Grona Embed snippet
+Campaigns you create through the Public API reach visitors through the Grona Embed snippet. Install it before your first API call, on every page a campaign will run on. This page covers where to get the snippet, where it goes and how to check it.
+Not the website script
+The Public API works with this snippet, not the script on the
+Website
+pages. That script loads from
+cdn.grona.ai
+. On a page that has only that script, the verify-script call reads
+absent
+, the visual editor does not start and API campaigns do not run.
+Add the snippet
+Section titled “Add the snippet”
+The Grona Embed dashboard gives you the snippet with your workspace id already in it.
+Sign in to the
+Grona Embed dashboard
+and open
+Embed Code
+. It can sit under
+Configurations
+.
+Copy the snippet.
+Paste it into the
+<head>
+of your website or page.
+The snippet looks like this, with your workspace id in place of
+YOUR_WORKSPACE_ID
+:
+<link
+rel
+=
+"preconnect"
+href
+=
+"https://personalize.grona.ai"
+/>
+<script
+data-grona-embed-script
+=
+"YOUR_WORKSPACE_ID"
+src
+=
+"https://personalize.grona.ai/workspaces/YOUR_WORKSPACE_ID.js"
+type
+=
+"text/javascript"
+async
+></script>
+Paste it as it is. Your workspace id is the same value the Public API returns as
+meta.workspaceId
+.
+Some workspaces also see an
+Enable Anti-Flicker
+switch below the snippet. Turning it on adds a line to the snippet, so copy the snippet again after you change the switch.
+Set your page variable
+Section titled “Set your page variable”
+Every API campaign targets a page variable, so your page has to set one. Put an inline script above the snippet:
+<head>
+<script>
+window.
+audience_id
+=
+'returning_buyer'
+;
+</script>
+<link
+rel
+=
+"preconnect"
+href
+=
+"https://personalize.grona.ai"
+/>
+<script
+data-grona-embed-script
+=
+"YOUR_WORKSPACE_ID"
+src
+=
+"https://personalize.grona.ai/workspaces/YOUR_WORKSPACE_ID.js"
+type
+=
+"text/javascript"
+async
+></script>
+<!-- the rest of your head -->
+</head>
+A value set later still applies, because Grona keeps checking the variable while the visitor stays on the page. Setting it above the snippet means the page does not change in front of the visitor. See
+Target by page variable
+.
+Check the install
+Section titled “Check the install”
+Ask Grona to look for the snippet on a page:
+Terminal window
+curl
+https://services.grona.ai/api/public/v1/websites/verify-script
+\
+-H
+"Authorization: Bearer
+$GRONA_SECRET_KEY
+"
+\
+-H
+"Content-Type: application/json"
+\
+-d
+'{"url": "https://shop.example.com/"}'
+present
+in
+data.script.status
+means Grona found the snippet on that page.
+absent
+means it did not, or that it could not load the page. See
+Verify installations
+.
+Content Security Policy
+Section titled “Content Security Policy”
+If your site sends a
+Content-Security-Policy
+header, it must allow at least
+https://personalize.grona.ai
+and
+https://services.grona.ai
+. The snippet loads its files from the first and reads and sends data through the second. It also needs
+'unsafe-inline'
+in
+style-src
+, for the style the snippet adds while it loads. A variation can need more, such as the origins of the images it adds, so check each variation before you go live.
+Next steps
+Section titled “Next steps”
+Authentication
+: generate the key the calls above use.
+Create campaigns from your platform
+: the end-to-end flow.
+Verify installations
+: what the check looks for and why it can read
+absent
+.
+Previous
+Authentication
+Next
+Create campaigns from your platform
+Report a problem with this page
+© 2026 Grona
+support@grona.ai
+Privacy
+Terms
