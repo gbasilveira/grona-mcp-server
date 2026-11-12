@@ -106,6 +106,25 @@ describe('actual stdio CLI and HTTP contract',()=>{
     expect(JSON.stringify(error)).not.toContain('embed-test-secret');
   });
 
+  it('composes lifecycle helpers through the real protocol with defaulted inputs',async()=>{
+    const search=await sdk.callTool({name:'grona_search_campaigns',arguments:{}});
+    expect(search.structuredContent).toHaveProperty('meta.localPagination',true);
+    expect(search.structuredContent).toHaveProperty('meta.count',1);
+    const overview=await sdk.callTool({name:'grona_campaign_overview',arguments:{campaignId:'CMP-1'}});
+    expect(overview.structuredContent).toHaveProperty('overview.pageUrl','https://shop.example.com/');
+    const readiness=await sdk.callTool({name:'grona_check_campaign_readiness',arguments:{campaignId:'CMP-1'}});
+    expect(readiness.structuredContent).toHaveProperty('data.ready',true);
+    const created=await sdk.callTool({name:'grona_create_campaign_once',arguments:{campaign:{name:'Campaign',url:'https://shop.example.com/',segmentId:'audience_id',segmentValue:'buyer',externalId:'CMP-1'}}});
+    expect(created.structuredContent).toHaveProperty('recovered',false);
+    const start=requests.length;
+    const launched=await sdk.callTool({name:'grona_launch_campaign',arguments:{campaignId:'CMP-1',edited:true,previewed:true}});
+    expect(launched.isError).not.toBe(true);
+    expect(launched.structuredContent).toHaveProperty('data.status','live');
+    expect(requests.slice(start).map(r=>[r.method,r.path])).toEqual([
+      ['GET','/embed/campaigns/CMP-1'],['POST','/embed/websites/verify-script'],['PATCH','/embed/campaigns/campaign-1/status'],
+    ]);
+  });
+
   it('reads all static resources and instantiates all reusable prompts',async()=>{
     const {resources}=await sdk.listResources();
     expect(resources.length).toBeGreaterThanOrEqual(2);

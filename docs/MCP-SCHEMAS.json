@@ -1,0 +1,888 @@
+{
+  "name": "grona-mcp",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "grona_list_campaigns",
+      "title": "List campaigns",
+      "description": "Return every workspace campaign with variations and previews. No upstream pagination or specified order; editor links are omitted.",
+      "kind": "api",
+      "method": "GET",
+      "path": "/campaigns",
+      "operationId": "list-campaigns",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_create_campaign",
+      "title": "Create campaign",
+      "description": "Create a paused campaign and variations with 15-minute editor links. Use externalId for duplicate protection. Requires Embed snippet and page variable. Creation never publishes.",
+      "kind": "api",
+      "method": "POST",
+      "path": "/campaigns",
+      "operationId": "create-campaign",
+      "readOnly": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Absolute http(s) page URL."
+          },
+          "externalId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "description": "Unique campaign identifier in your workspace; optional on create."
+          },
+          "segmentId": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "description": "Custom window variable name, up to 128 characters."
+          },
+          "segmentValue": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "description": "Exact page-variable string match."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "general",
+              "abTest"
+            ]
+          },
+          "pageTargeting": {
+            "type": "string",
+            "enum": [
+              "specific",
+              "multiple"
+            ]
+          },
+          "trafficSplit": {
+            "type": "object",
+            "properties": {
+              "Control": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "Test": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "Control",
+              "Test"
+            ],
+            "additionalProperties": false
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "included",
+              "not_included"
+            ]
+          },
+          "list": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "name",
+          "url",
+          "segmentId",
+          "segmentValue"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_get_campaign",
+      "title": "Get campaign",
+      "description": "Get by opaque Grona id or workspace-unique externalId. Grona id wins on ambiguity. No editor links return.",
+      "kind": "api",
+      "method": "GET",
+      "path": "/campaigns/{campaignId}",
+      "operationId": "get-campaign",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          }
+        },
+        "required": [
+          "campaignId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_update_campaign",
+      "title": "Update campaign",
+      "description": "Patch mutable fields; returns full campaign. url/type/pageTargeting are fixed at creation. Retry only by immutable Grona id. trafficSplit keys are variation ids totaling 100.",
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/campaigns/{campaignId}",
+      "operationId": "update-campaign",
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          },
+          "changes": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "live",
+                  "paused"
+                ]
+              },
+              "externalId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+                    "description": "Unique campaign identifier in your workspace; optional on create."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "segmentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "description": "Custom window variable name, up to 128 characters."
+              },
+              "segmentValue": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+                "description": "Exact page-variable string match."
+              },
+              "trafficSplit": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "slug": {
+                "type": "string",
+                "minLength": 1
+              },
+              "condition": {
+                "type": "string",
+                "enum": [
+                  "included",
+                  "not_included"
+                ]
+              },
+              "list": {
+                "minItems": 1,
+                "maxItems": 50,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              },
+              "type": {
+                "description": "Ignored by Grona; campaign type is immutable.",
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "campaignId",
+          "changes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_delete_campaign",
+      "title": "Delete campaign",
+      "description": "Permanently delete campaign and unshared variations. Frees externalId for reuse. Retry only by immutable Grona id. Propagation to visitors is asynchronous.",
+      "kind": "api",
+      "method": "DELETE",
+      "path": "/campaigns/{campaignId}",
+      "operationId": "delete-campaign",
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          }
+        },
+        "required": [
+          "campaignId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_set_campaign_status",
+      "title": "Set campaign status",
+      "description": "Set live or paused. live affects real visitors after propagation. Prefer grona_launch_campaign for readiness guards; this direct route has none.",
+      "kind": "api",
+      "method": "PATCH",
+      "path": "/campaigns/{campaignId}/status",
+      "operationId": "set-campaign-status",
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "live",
+              "paused"
+            ]
+          }
+        },
+        "required": [
+          "campaignId",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_create_edit_link",
+      "title": "Create editor link",
+      "description": "Mint a secret 15-minute editor link by variationId (preferred) or page url. variationId wins; url chooses most recently updated match. Editor trust covers the workspace. Open immediately; do not store, log or share.",
+      "kind": "api",
+      "method": "POST",
+      "path": "/variations/edit-link",
+      "operationId": "create-edit-link",
+      "readOnly": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "variationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Absolute http(s) page URL."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_validate_edit_link",
+      "title": "Validate or refresh editor link",
+      "description": "Send the whole editor URL; receive original or refreshed link. Always open returned data.editUrl. valid=false/refreshed=true is successful.",
+      "kind": "api",
+      "method": "POST",
+      "path": "/variations/edit-link/validate",
+      "operationId": "validate-edit-link",
+      "readOnly": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "editUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Whole Grona editor link exactly as issued."
+          }
+        },
+        "required": [
+          "editUrl"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_verify_script",
+      "title": "Verify Embed installation",
+      "description": "Check exact page for this workspace’s Embed snippet. absent also means inaccessible page. Does not verify execution, anti-flicker, consent, CSP or whole site. Can take several seconds.",
+      "kind": "api",
+      "method": "POST",
+      "path": "/websites/verify-script",
+      "operationId": "verify-script",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Absolute http(s) page URL."
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_issue_grants",
+      "title": "Fetch mobile grants",
+      "description": "Fetch current signed grants from separate mobile service/credential. customerId must come from authenticated shopper session, never app input or PII. Return tokens unchanged; this does not verify or redeem them.",
+      "kind": "api",
+      "method": "POST",
+      "path": "/v1/mobile/grants",
+      "operationId": "issue-grants",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "customerId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+            "description": "Opaque shopper id from an authenticated session, never an email, phone or national id."
+          }
+        },
+        "required": [
+          "customerId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_search_campaigns",
+      "title": "Search campaigns",
+      "description": "Fetch full list once; filter locally by text/status/type/domain/script state/externalId and sort deterministically. offset/limit are local presentation controls.",
+      "kind": "workflow",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "query": {
+            "description": "Case-insensitive substring of name, id, externalId or domain.",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "scriptStatus": {
+            "type": "string"
+          },
+          "externalId": {
+            "type": "string"
+          },
+          "sortBy": {
+            "default": "name",
+            "type": "string",
+            "enum": [
+              "name",
+              "createdAt",
+              "updatedAt",
+              "id"
+            ]
+          },
+          "order": {
+            "default": "asc",
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          },
+          "offset": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "default": 100,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_create_campaign_once",
+      "title": "Create campaign once",
+      "description": "Require externalId; on 409 fetch and compare existing campaign identity before recovering with fresh editor links. Conflict never patches or publishes an existing campaign.",
+      "kind": "workflow",
+      "readOnly": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaign": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Absolute http(s) page URL."
+              },
+              "externalId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+                "description": "Unique campaign identifier in your workspace; optional on create."
+              },
+              "segmentId": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+                "description": "Custom window variable name, up to 128 characters."
+              },
+              "segmentValue": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+                "description": "Exact page-variable string match."
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "general",
+                  "abTest"
+                ]
+              },
+              "pageTargeting": {
+                "type": "string",
+                "enum": [
+                  "specific",
+                  "multiple"
+                ]
+              },
+              "trafficSplit": {
+                "type": "object",
+                "properties": {
+                  "Control": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "Test": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "Control",
+                  "Test"
+                ],
+                "additionalProperties": false
+              },
+              "slug": {
+                "type": "string",
+                "minLength": 1
+              },
+              "condition": {
+                "type": "string",
+                "enum": [
+                  "included",
+                  "not_included"
+                ]
+              },
+              "list": {
+                "minItems": 1,
+                "maxItems": 50,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                }
+              }
+            },
+            "required": [
+              "name",
+              "url",
+              "segmentId",
+              "segmentValue"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "campaign"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_campaign_overview",
+      "title": "Explain campaign",
+      "description": "Read campaign and summarize targeting, previews, variation health and next steps. Does not mint editor links or claim analytics exist.",
+      "kind": "workflow",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          }
+        },
+        "required": [
+          "campaignId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_check_campaign_readiness",
+      "title": "Check launch readiness",
+      "description": "Read campaign and freshly verify its actual page from stored url or preview URL. Report observable blockers and manual checks. Cannot inspect saved edits or previews.",
+      "kind": "workflow",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          }
+        },
+        "required": [
+          "campaignId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_launch_campaign",
+      "title": "Launch reviewed campaign",
+      "description": "Require edited=true and previewed=true attestations, freshly verify actual campaign page, then set live by immutable id. Refuse absent snippet/unusable variations. Direct tools remain unguarded.",
+      "kind": "workflow",
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          },
+          "edited": {
+            "type": "boolean",
+            "const": true,
+            "description": "Attest saved edits have been reviewed."
+          },
+          "previewed": {
+            "type": "boolean",
+            "const": true,
+            "description": "Attest every intended variation has been previewed."
+          }
+        },
+        "required": [
+          "campaignId",
+          "edited",
+          "previewed"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_set_ab_split",
+      "title": "Set traffic split by role",
+      "description": "Read A/B campaign; map Control/Test to current variation ids, validate integer percentages total 100, update by immutable campaign id.",
+      "kind": "workflow",
+      "readOnly": false,
+      "destructive": true,
+      "idempotent": false,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque Grona campaign id or externalId."
+          },
+          "Control": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "Test": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "campaignId",
+          "Control",
+          "Test"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_evaluate_page_targeting",
+      "title": "Simulate page targeting",
+      "description": "Locally evaluate URL rules and optional page-variable value. Multiple-page exclusions still require exact origin and segment count. Predicts eligibility, not execution or traffic allocation.",
+      "kind": "local",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Original campaign sample URL retained from creation."
+          },
+          "type": {
+            "default": "general",
+            "type": "string",
+            "enum": [
+              "general",
+              "abTest"
+            ]
+          },
+          "pageTargeting": {
+            "default": "specific",
+            "type": "string",
+            "enum": [
+              "specific",
+              "multiple"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1
+          },
+          "condition": {
+            "default": "included",
+            "type": "string",
+            "enum": [
+              "included",
+              "not_included"
+            ]
+          },
+          "list": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "urls": {
+            "minItems": 1,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "description": "Absolute http(s) page URL."
+            }
+          },
+          "segmentId": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "description": "Custom window variable name, up to 128 characters."
+          },
+          "segmentValue": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "description": "Exact page-variable string match."
+          },
+          "pageVariables": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "url",
+          "urls"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_generate_snippet",
+      "title": "Generate Embed snippet",
+      "description": "Generate escaped Embed HTML and optional page-variable assignment. Dashboard snippet may include anti-flicker; this helper installs nothing.",
+      "kind": "local",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "workspaceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "segmentId": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "description": "Custom window variable name, up to 128 characters."
+          },
+          "segmentValue": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$",
+            "description": "Exact page-variable string match."
+          }
+        },
+        "required": [
+          "workspaceId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "grona_configuration",
+      "title": "Inspect configuration",
+      "description": "Show credential-presence flags, hosts and timeout/retry settings without secrets. Makes no upstream request.",
+      "kind": "local",
+      "readOnly": true,
+      "idempotent": true,
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ],
+  "resources": [
+    {
+      "name": "api-routes",
+      "uri": "grona://reference/routes",
+      "description": "All upstream operations and direct MCP equivalents."
+    },
+    {
+      "name": "agent-guide",
+      "uri": "grona://reference/agent-guide",
+      "description": "Lifecycle, targeting, installation, editor-link and mobile guidance."
+    },
+    {
+      "name": "error-guide",
+      "uri": "grona://reference/errors",
+      "description": "Stable error codes and recovery rules."
+    },
+    {
+      "name": "openapi",
+      "uri": "grona://reference/openapi",
+      "description": "Captured authoritative OpenAPI 3.1 contract."
+    }
+  ],
+  "prompts": [
+    {
+      "name": "grona_campaign_lifecycle",
+      "description": "Guide a campaign through installation, editing, preview and launch.",
+      "argument": "campaignId"
+    },
+    {
+      "name": "grona_debug_installation",
+      "description": "Diagnose absent Embed snippet on one page.",
+      "argument": "url"
+    },
+    {
+      "name": "grona_mobile_integration",
+      "description": "Secure mobile grants delivery and order-backend obligations.",
+      "argument": null
+    }
+  ]
+}

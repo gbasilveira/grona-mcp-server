@@ -16,7 +16,7 @@ Configuration is read once at process startup. Restart after rotating credential
 | `GRONA_MAX_RETRIES` | `2` | Additional attempts for operations that can safely be replayed. `0` disables automatic retry. |
 | `GRONA_MAX_RETRY_DELAY_MS` | `60000` | Maximum automatic wait. A server-requested longer delay is returned to the caller instead of retrying early. |
 
-Use the MCP client's environment configuration or Node `--env-file=.env`. The library itself does not search for `.env` files. Blank keys count as unconfigured. Invalid configuration fails startup with a concise diagnostic on stderr. Never include a secret in a base URL.
+Use the MCP client's environment configuration or Node `--env-file=.env`. The library itself does not search for `.env` files. Blank or whitespace-only keys count as unconfigured. Key values are trimmed. Integer timeouts must be 1–600000 ms, maxRetries 0–10, and maxRetryDelayMs 0–600000 ms. Base URLs require HTTPS except HTTP loopback addresses for local tests, and reject embedded credentials, queries and fragments. Invalid configuration fails startup with a concise diagnostic on stderr. Never include a secret in a base URL.
 
 `grona_configuration` reports service configuration without revealing credential contents. It does not test key validity or entitlements. A configured key can still be revoked or unauthorized.
 
@@ -24,18 +24,18 @@ Use the MCP client's environment configuration or Node `--env-file=.env`. The li
 
 A successful direct tool returns the original Grona `{ "data": …, "meta": … }` envelope as JSON text and MCP `structuredContent`. Extra fields and future response enum values survive. `meta.workspaceId` is resolved by Grona from the relevant credential. Lists have `meta.count`; v1 returns the complete list without pagination or a defined order.
 
-Tool execution failures use MCP `isError: true` and a machine-readable error object. Branch on stable `error.code` and HTTP status, rather than parsing human wording. Schema/protocol validation may be rejected by the SDK before tool execution. Reference resources and prompts contain no credentials.
+Tool execution failures use MCP `isError: true` and a machine-readable `{ "error": { "code": "…", "message": "…", "status": 404, "retryable": false, "recovery": "…" } }` object. Upstream client failures include status, retryability and recovery; workflows supply their own diagnostic fields such as `completedSteps`. Branch on stable `error.code` and HTTP status, rather than parsing human wording. Schema/protocol validation may be rejected by the SDK before tool execution. Reference resources and prompts contain no credentials.
 
 | HTTP / condition | Grona code | Recovery |
 |---|---|---|
-| 400 | `invalid_request` | Correct input. No mutation was applied. Check required fields and campaign type/targeting restrictions. |
+| 400 | `invalid_request` | Correct input. A Grona validation rejection applies no mutation. Check required fields and campaign type/targeting restrictions. |
 | 401 | `unauthorized` | Check the key for this service; rotate/reconfigure if revoked. |
 | 403 | `forbidden` | Check workspace plan/feature limits and access. Failed create creates nothing. |
 | 404 | `not_found` | Re-read campaign/variation ids; verify the workspace. Unknown API paths also return 404. |
 | 409 | `conflict` | `externalId` already belongs to a campaign. Fetch and compare identity before recovery. |
 | 429 | `rate_limited` | Respect `Retry-After`; fixed rate limits are not published. |
 | 500 / gateway 5xx | `internal` or gateway failure | Retry only if the operation is safe. Gateway bodies may be text rather than an API envelope. |
-| Mobile 503 | service unavailable | Honor `Retry-After` where supplied; retry the same customer's fetch. |
+| Mobile 503 | envelope may be absent | Honor `Retry-After` where supplied; retry the same customer's fetch. |
 | Network/timeout | local client error | Outcome of a mutation may be unknown. Recover a create through `externalId`; inspect updates/deletes by immutable Grona id before taking further action. |
 | Missing credential | local configuration error | Set the corresponding environment key and restart. Local helpers remain available. |
 

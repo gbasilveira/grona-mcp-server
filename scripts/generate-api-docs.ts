@@ -9,7 +9,7 @@ type Schema = Record<string, any>;
 const root = fileURLToPath(new URL('../', import.meta.url));
 const spec = parse(readFileSync(`${root}docs/upstream/grona-api.yaml`, 'utf8'));
 const resolve = (value: Schema): Schema => value?.$ref
-  ? resolve(value.$ref.slice(2).split('/').reduce((node: any, key: string) => node[key], spec))
+  ? { ...resolve(value.$ref.slice(2).split('/').reduce((node: any, key: string) => node[key], spec)), ...Object.fromEntries(Object.entries(value).filter(([key])=>key!=='$ref')) }
   : value;
 const flat = (input: Schema): Schema => {
   const schema = resolve(input);
@@ -33,6 +33,8 @@ const constraints = (s: Schema): string => {
     r.pattern ? `Pattern: \`${r.pattern}\`.` : '',
     ...['minLength','maxLength','minimum','maximum','minItems','maxItems','minProperties','format','default'].filter(k=>r[k]!==undefined).map(k=>`${k}: \`${JSON.stringify(r[k])}\`.`),
     r.additionalProperties === false ? 'No additional keys.' : '',
+    r.items ? `Items: ${constraints(r.items)}` : '',
+    typeof r.additionalProperties === 'object' ? `Map values: ${type(r.additionalProperties)}. ${constraints(r.additionalProperties)}` : '',
   ].filter(Boolean).join(' ');
 };
 const fields = (input: Schema, prefix = '', depth = 0): string[] => {
