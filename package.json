@@ -28,7 +28,8 @@
     "docs/DEVELOPMENT.md",
     "examples",
     ".env.example",
-    "docs/MCP-SCHEMAS.json"
+    "docs/MCP-SCHEMAS.json",
+    "docs/VERIFICATION.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

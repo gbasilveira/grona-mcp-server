@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Phase | P1 |
-| Status | IN REVIEW |
+| Status | ACCEPTED |
 | Depends on | WO-002 |
 | Branch | `wo/002b-recovery` |
 
@@ -78,3 +78,5 @@ or secrets used; no changes outside the declared source/test/workorder scope.
 
 Deviations: none. Root refreshes documentation and independently reviews/integrates.
 
+
+Independent review: root reran all 63 focused tests and typecheck, inspected the 4-file scope, merged 823bdc8, then verified 157 full-suite tests plus build and generated-doc checks; accepted 2026-11-12.

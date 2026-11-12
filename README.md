@@ -82,6 +82,8 @@ npm pack --dry-run
 
 Tests exercise HTTP behavior through deterministic fakes/local services and MCP protocol calls through the official client. Production credentials are not required. Live Grona account behavior requires a provisioned workspace and is not claimed by these tests.
 
-Workorder management is bootstrapped from [`~/trabalho/foundry-protocol`](../foundry-protocol), with the queue in [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) and results under [docs/work-orders](docs/work-orders).
+The [verification record](docs/VERIFICATION.md) includes the final checks and live-account validation boundary.
+
+Workorder management is bootstrapped from [`~/trabalho/foundry-protocol`](../../foundry-protocol/README.md), with the queue in [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) and results under [docs/work-orders](docs/work-orders).
 
 MIT for this implementation. Third-party Grona reference material retains Grona's terms; see [LICENSE](LICENSE).

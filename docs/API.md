@@ -595,7 +595,7 @@ Grona checks the page at `url` for your Grona Embed snippet and returns `present
 page you send, not the whole site.
 
 The call waits for the check and can take several seconds, so set a generous client
-timeout. See [Verify installations](/api/verify-installations/).
+timeout. See [Verify installations](https://developer.grona.ai/api/verify-installations/).
 
 ### MCP input
 
@@ -657,7 +657,7 @@ than new ones, so the call is safe to retry.
 Grona has no endpoint to redeem a grant. Your order backend verifies each grant itself
 at order time and makes sure each grant `jti` is used only once. If an offer must apply
 once per customer rather than once per grant, your order backend enforces that too. See
-[Grants and order verification](/mobile/backend/grants-and-orders/).
+[Grants and order verification](https://developer.grona.ai/mobile/backend/grants-and-orders/).
 
 ### MCP input
 

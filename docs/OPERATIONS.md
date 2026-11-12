@@ -49,7 +49,7 @@ PATCH and DELETE are not automatically replayed by the client. In particular, an
 
 `Retry-After` accepts seconds and, for mobile, an HTTP date. Automatic retries respect the header. Ordinary retryable failures use bounded exponential backoff and jitter. A delay beyond the configured wait limit is surfaced for later retry instead of shortening the upstream wait. Each retry has its own timeout; total wall time can exceed one timeout. There is no upstream `Idempotency-Key` header.
 
-Do not assume a 409 proves equality with the intended create. In particular, specific campaigns omit their original URL on get/list; preview URLs can help identify the page, but campaigns with missing variations may be impossible to compare safely. The create-once helper fails on ambiguous/mismatched identity rather than modifying an existing campaign.
+Do not assume a 409 proves equality with the intended create. Specific A/B conflict recovery is refused because the exact original URL, including whether it had targeting query parameters, cannot be proven from preview URLs. In particular, specific campaigns omit their original URL on get/list; preview URLs can help identify the page, but campaigns with missing variations may be impossible to compare safely. The create-once helper fails on ambiguous/mismatched identity rather than modifying an existing campaign.
 
 ## Workspace and link access
 

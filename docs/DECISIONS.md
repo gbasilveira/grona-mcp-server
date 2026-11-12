@@ -52,3 +52,16 @@ generate the complete route/field reference from it, and test operation-to-tool
 mapping through the real MCP client.
 **Why:** Missing routes and documentation drift become deterministic verification
 failures. Captured contracts do not imply live account verification.
+
+### DR-05 — Refuse lossy specific A/B conflict recovery
+
+**Date:** 2026-11-12.
+**Decision:** A create-once conflict for a specific A/B campaign cannot automatically
+prove the intended exact URL, including absence of original query parameters, from
+preview URLs. Return a mismatch/unverifiable result and require reconciliation using
+creation records. Keep underlying code/status actionable on definite launch rejection;
+ambiguous failures retain uncertain-outcome diagnostics and safe cause metadata.
+**Why:** Original targeting URL is absent on reads and preview URL parameters are not
+specified. Removing them can silently equate distinct campaign identities.
+**Alternatives considered:** Guess preview token parameter names or assume missing
+query in the new request means missing query in the old campaign; both are unproven.

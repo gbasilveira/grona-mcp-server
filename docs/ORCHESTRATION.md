@@ -5,10 +5,10 @@
 | | |
 |---|---|
 | Project | Grona MCP |
-| Active phase | P1 implementation |
-| Closed phases | Discovery: 10 operations, authoritative OpenAPI snapshot captured |
-| State of the main branch | Foundation prepared; verification pending |
-| Blockers | No production credentials supplied; live account tests excluded |
+| Active phase | None — implementation complete |
+| Closed phases | Discovery and P1: all 10 routes, 9 helpers, documentation and verification |
+| State of the main branch | 157 tests green; typecheck/build/docs/package/Docker checks passed |
+| Blockers | None for delivery; live-account tests excluded because no credentials were supplied |
 
 Baseline invariant: `docs/upstream/grona-api.yaml` is the authoritative captured contract.
 Change it deliberately with route coverage verification. Working branch: main.
@@ -50,8 +50,8 @@ credentials in fixtures. One agent per WO; at most two concurrent executors.
 |---|---|---|---|---|---|
 | 001 | Typed API client and validation | P1 | ACCEPTED | client | — |
 | 002 | MCP tools and agent workflows | P1 | ACCEPTED | server | 001 interface |
-| 002b | Conservative A/B recovery and launch diagnostics | P1 | IN PROGRESS | client | 002 |
-| 003 | Documentation and independent verification | P1 | IN PROGRESS | root | 001, 002 |
+| 002b | Conservative A/B recovery and launch diagnostics | P1 | ACCEPTED | client | 002 |
+| 003 | Documentation and independent verification | P1 | ACCEPTED | root | 001, 002, 002b |
 
 ### 4.1 — Gate queue
 
@@ -60,7 +60,7 @@ credentials in fixtures. One agent per WO; at most two concurrent executors.
 
 ## 5. Log — append-only
 
-2026-11-12: Empty project bootstrapped from local foundry-protocol. Source captured.
+2026-11-12: P1 complete. All workorders accepted. See `history/P1-SUMMARY.md` and `VERIFICATION.md`.
 
 ## 6. Memory
 

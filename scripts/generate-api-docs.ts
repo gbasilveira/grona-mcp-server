@@ -103,7 +103,7 @@ out.push('## Additional agent tools','These tools compose the API or compute loc
 out.push('## Error contracts',table(spec.components.schemas.Error),'Mobile errors use the same shape. Unknown codes and extra response fields are preserved. Gateway failures may not be JSON. See [Operations](OPERATIONS.md) for the MCP error wrapper, retries, recovery and timeouts.');
 const manifest = JSON.stringify({name:'grona-mcp',version:'1.0.0',tools:TOOL_CATALOG.map(t=>({...t,inputSchema:z.toJSONSchema(TOOL_SCHEMAS[t.name as keyof typeof TOOL_SCHEMAS],{io:'input'})})),resources:RESOURCE_CATALOG,prompts:PROMPT_CATALOG},null,2)+'\n';
 const manifestPath=`${root}docs/MCP-SCHEMAS.json`;
-const content=out.join('\n\n').replace(/\|\n\n\|/g,'|\n|')+'\n';
+const content=out.join('\n\n').replace(/\|\n\n\|/g,'|\n|').replace(/\]\(\/([^)]*)\)/g,'](https://developer.grona.ai/$1)')+'\n';
 const destination=`${root}docs/API.md`;
 if(process.argv.includes('--check')) {
   if(readFileSync(destination,'utf8')!==content || readFileSync(manifestPath,'utf8')!==manifest) throw new Error('API documentation is stale. Run npm run docs:generate.');

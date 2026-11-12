@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createServer as createHttpServer, type Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { parse } from 'yaml';
@@ -154,6 +155,18 @@ describe('actual stdio CLI and HTTP contract',()=>{
 });
 
 describe('offline startup',()=>{
+  it('reports invalid startup configuration on stderr without exposing values',()=>{
+    const entry=process.env.GRONA_TEST_ENTRY ?? 'src/index.ts';
+    const child=spawnSync(process.execPath,entry.endsWith('.ts') ? ['--import','tsx',resolve(entry)] : [resolve(entry)],{
+      cwd:process.cwd(),env:{GRONA_API_KEY:'startup-private-key',GRONA_AUTH_MODE:'private-invalid-auth-value'},encoding:'utf8',timeout:10000,
+    });
+    expect(child.status).toBe(1);
+    expect(child.stdout).toBe('');
+    expect(child.stderr).toContain('authMode');
+    expect(child.stderr).not.toContain('startup-private-key');
+    expect(child.stderr).not.toContain('private-invalid-auth-value');
+  });
+
   it('discovers and uses local capabilities without any credentials',async()=>{
     const entry=process.env.GRONA_TEST_ENTRY ?? 'src/index.ts';
     const offlineTransport=new StdioClientTransport({command:process.execPath,args:entry.endsWith('.ts') ? ['--import','tsx',resolve(entry)] : [resolve(entry)],cwd:process.cwd(),env:{},stderr:'pipe'});

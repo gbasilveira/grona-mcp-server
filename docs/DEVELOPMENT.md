@@ -58,7 +58,7 @@ The generated route table fails if any OpenAPI operation lacks a matching MCP eq
 
 ## Workorder management
 
-This repository uses the requested local [Foundry protocol](../../foundry-protocol/README.md). The canonical workorder state is the queue in `docs/ORCHESTRATION.md`; each WO includes preparation, task markers, scope fences, acceptance criteria, sabotage checks and a self-contained RESULT. Executors use isolated git worktrees. Root reviews results by running commands before accepting them.
+This repository uses the requested local [Foundry protocol](../../../foundry-protocol/README.md). The canonical workorder state is the queue in `docs/ORCHESTRATION.md`; each WO includes preparation, task markers, scope fences, acceptance criteria, sabotage checks and a self-contained RESULT. Executors use isolated git worktrees. Root reviews results by running commands before accepting them.
 
 ```bash
 bash scripts/wo.sh status
@@ -68,3 +68,22 @@ bash scripts/check-format-contract.sh
 ```
 
 Foundry baseline copies under `docs/.foundry/` allow future framework updates with a three-way merge. Do not hand-edit the baseline copies to hide local protocol changes. Persistent project-specific knowledge belongs in `docs/memory/entries/` and its index. No deployment, remote repository creation, publishing or PR submission is implied by local implementation work.
+
+## Programmatic use
+
+The npm package exposes typed server, client, config, schema, workflow and type modules:
+
+```typescript
+import { createServer } from 'grona-mcp';
+import { GronaClient } from 'grona-mcp/client';
+import { loadConfig } from 'grona-mcp/config';
+
+const api = new GronaClient(loadConfig(process.env));
+const server = createServer(api);
+// Connect `server` to a transport supplied by your host application.
+```
+
+`GronaClient` also accepts injected `fetch`, `sleep` and `random` implementations for
+controlled testing. Request types and extensible response models are exported under
+`grona-mcp/types`; schemas under `grona-mcp/schemas`; helper functions under
+`grona-mcp/workflows`. The CLI uses the SDK's stdio negotiation factory.
