@@ -36,6 +36,21 @@ describe('MCP discovery and direct routes',()=>{
     const {client,c}=await setup();c.getCampaign.mockRejectedValue(new GronaError('not_found','missing',404));const response=await client.callTool({name:'grona_get_campaign',arguments:{campaignId:'missing'}});
     expect(response.isError).toBe(true);expect(response.structuredContent).toMatchObject({error:{code:'not_found',status:404,recovery:expect.any(String)}});
   });
+  it.each([[400,'invalid_request'],[401,'unauthorized'],[403,'forbidden'],[404,'not_found'],[409,'conflict'],[429,'rate_limited']] as const)('keeps launch rejection %s actionable through MCP',async(status,code)=>{
+    const {client,c}=await setup(); const error=new GronaError(code,'Launch rejected.',status,false,status===429?30000:undefined); c.setCampaignStatus.mockRejectedValue(error);
+    const response=await client.callTool({name:'grona_launch_campaign',arguments:{campaignId:'CMP-1',edited:true,previewed:true}});
+    expect(response.isError).toBe(true); expect(response.structuredContent).toMatchObject({error:{code,status,recovery:error.recovery,completedSteps:['read_campaign','verify_campaign_page'],attemptedStep:'set_live',cause:{code,status}}});
+  });
+  it('serializes sanitized upstream cause and completed steps for an uncertain launch',async()=>{
+    const {client,c}=await setup();c.setCampaignStatus.mockRejectedValue(new GronaError('timeout','Grona request timed out.',0));
+    const response=await client.callTool({name:'grona_launch_campaign',arguments:{campaignId:'CMP-1',edited:true,previewed:true}});
+    expect(response.isError).toBe(true);expect(response.structuredContent).toMatchObject({error:{code:'launch_outcome_uncertain',completedSteps:['read_campaign','verify_campaign_page'],cause:{code:'timeout',status:0}}});
+  });
+  it('hides unexpected launch exception secrets through MCP',async()=>{
+    const {client,c}=await setup();c.setCampaignStatus.mockRejectedValue(new Error('embed-secret token=editor-secret'));
+    const response=await client.callTool({name:'grona_launch_campaign',arguments:{campaignId:'CMP-1',edited:true,previewed:true}});
+    expect(response.isError).toBe(true);expect(response.structuredContent).toMatchObject({error:{code:'launch_outcome_uncertain'}});expect(JSON.stringify(response)).not.toContain('embed-secret');expect(JSON.stringify(response)).not.toContain('editor-secret');
+  });
   it('rejects invalid input before network calls',async()=>{
     const {client,c}=await setup();const response=await client.callTool({name:'grona_create_campaign',arguments:{name:'missing fields'}});expect(response.isError).toBe(true);expect(c.createCampaign).not.toHaveBeenCalled();
   });

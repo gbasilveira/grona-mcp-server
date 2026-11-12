@@ -33,6 +33,21 @@ describe('launch workflows', () => {
     const client = fakeClient(); client.setCampaignStatus.mockRejectedValue(new Error('token=secret'));
     await expect(launchCampaign(client,{campaignId:'CMP-1',edited:true,previewed:true})).rejects.toMatchObject({code:'launch_outcome_uncertain',details:{campaignId:'campaign-grona-id',completedSteps:['read_campaign','verify_campaign_page'],attemptedStep:'set_live'}});
   });
+  it.each([[400,'invalid_request'],[401,'unauthorized'],[403,'forbidden'],[404,'not_found'],[409,'conflict'],[429,'rate_limited']] as const)('preserves known launch rejection %s with completed steps', async (status, code) => {
+    const client = fakeClient(), error = new GronaError(code,'Launch rejected.',status,false,status === 429 ? 30000 : undefined);
+    client.setCampaignStatus.mockRejectedValue(error);
+    await expect(launchCampaign(client,{campaignId:'CMP-1',edited:true,previewed:true})).rejects.toMatchObject({code,details:{status,retryable:false,recovery:error.recovery,campaignId:'campaign-grona-id',completedSteps:['read_campaign','verify_campaign_page'],attemptedStep:'set_live',cause:error.toJSON()}});
+    expect(client.setCampaignStatus).toHaveBeenCalledTimes(1);
+  });
+  it.each([new GronaError('timeout','Request timed out.',0),new GronaError('network_error','Could not reach Grona.',0),new GronaError('gateway_error','Gateway failed.',502),new GronaError('invalid_response','Malformed success envelope.',200)])('retains sanitized cause for uncertain launch outcome: $code', async error => {
+    const client = fakeClient(); client.setCampaignStatus.mockRejectedValue(error);
+    await expect(launchCampaign(client,{campaignId:'CMP-1',edited:true,previewed:true})).rejects.toMatchObject({code:'launch_outcome_uncertain',details:{campaignId:'campaign-grona-id',completedSteps:['read_campaign','verify_campaign_page'],attemptedStep:'set_live',cause:error.toJSON(),recovery:expect.stringContaining('Read current campaign status')}});
+  });
+  it('never exposes raw unexpected launch exception messages', async () => {
+    const client = fakeClient(); client.setCampaignStatus.mockRejectedValue(new Error('embed-secret token=editor-secret'));
+    try { await launchCampaign(client,{campaignId:'CMP-1',edited:true,previewed:true}); throw new Error('Expected failure'); }
+    catch(error) { const serialized = JSON.stringify(error); expect(serialized).not.toContain('embed-secret'); expect(serialized).not.toContain('editor-secret'); expect(serialized).not.toContain('cause'); expect(error).toMatchObject({code:'launch_outcome_uncertain'}); }
+  });
   it('does not launch unknown future campaign types', async () => {
     const client = fakeClient(campaign({type:'future'})); expect((await checkReadiness(client,'CMP-1')).data.ready).toBe(false);
   });
@@ -57,6 +72,18 @@ describe('create-once', () => {
     const c = campaign({type:'abTest',trafficSplit:{v1:50,v2:50},variations:[{id:'v1',name:'Control',type:'control',previewUrl:request.url},{id:'v2',name:'Test',type:'variant',previewUrl:request.url}]});
     const client = fakeClient(c); client.createCampaign.mockRejectedValue(new GronaError('conflict','taken',409));
     await expect(createCampaignOnce(client,{...request,type:'abTest',url:request.url+'?source=1'})).rejects.toMatchObject({code:'create_conflict_mismatch'});
+  });
+  it.each(['https://shop.example.com/products?source=old&undocumented_preview=secret','https://shop.example.com/products?undocumented_preview=secret','https://shop.example.com/products'])('never proves specific A/B identity for queryless request from preview %s', async previewUrl => {
+    const c = campaign({type:'abTest',trafficSplit:{v1:50,v2:50},variations:[{id:'v1',name:'Control',type:'control',previewUrl},{id:'v2',name:'Test',type:'variant',previewUrl}]});
+    const client = fakeClient(c); client.createCampaign.mockRejectedValue(new GronaError('conflict','taken',409));
+    await expect(createCampaignOnce(client,{...request,type:'abTest'})).rejects.toMatchObject({code:'create_conflict_mismatch',details:{mismatches:expect.arrayContaining(['original specific A/B URL cannot be verified from API preview links']),completedSteps:['create_conflict','read_existing_campaign']}});
+    expect(client.createEditLink).not.toHaveBeenCalled(); expect(client.updateCampaign).not.toHaveBeenCalled();
+  });
+  it('still recovers a multi-page A/B identity from its stored sample URL and targeting', async () => {
+    const multi = {...request,type:'abTest' as const,pageTargeting:'multiple' as const,url:'https://shop.example.com/dairy/milk',slug:'dairy',list:['dairy','bakery']};
+    const c = campaign({...multi,condition:'included',trafficSplit:{v1:50,v2:50},variations:[{id:'v1',name:'Control',type:'control',previewUrl:multi.url},{id:'v2',name:'Test',type:'variant',previewUrl:multi.url}]});
+    const client = fakeClient(c); client.createCampaign.mockRejectedValue(new GronaError('conflict','taken',409));
+    expect((await createCampaignOnce(client,multi)).recovered).toBe(true); expect(client.createEditLink).toHaveBeenCalledTimes(2);
   });
   it('reports existing campaign and completed steps when refresh partially fails', async () => {
     const client = fakeClient(); client.createCampaign.mockRejectedValue(new GronaError('conflict','taken',409)); client.createEditLink.mockRejectedValue(new Error('sensitive'));
