@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { GronaClient } from './client.js';
+import { GronaError, type GronaClient } from './client.js';
 import type { Campaign, CreateCampaignRequest } from './types.js';
 import { createCampaignSchema, httpUrlSchema, segmentIdSchema, segmentValueSchema } from './schemas.js';
 export type WorkflowClient = Pick<GronaClient, 'listCampaigns' | 'createCampaign' | 'getCampaign' | 'updateCampaign' | 'setCampaignStatus' | 'createEditLink' | 'verifyScript'>;
@@ -73,7 +73,16 @@ export async function launchCampaign(client: WorkflowClient, input: z.infer<type
   if (!readiness.data.ready) throw new WorkflowError('not_ready', 'Campaign failed launch readiness; no status change was sent.', { blockers: readiness.data.blockers, completedSteps: ['read_campaign', ...(readiness.data.installation ? ['verify_campaign_page'] : [])] });
   let result: Awaited<ReturnType<WorkflowClient['setCampaignStatus']>>;
   try { result = await client.setCampaignStatus(readiness.data.campaign.id, 'live'); }
-  catch { throw new WorkflowError('launch_outcome_uncertain', 'Launch request failed; status may have changed. Read the campaign by immutable id before retrying.', { campaignId: readiness.data.campaign.id, completedSteps: ['read_campaign', 'verify_campaign_page'], attemptedStep: 'set_live', recovery: 'Read current campaign status before retrying the mutation.' }); }
+  catch (error) {
+    // GronaClient normalizes and redacts GronaError fields; unexpected exceptions
+    // must never expose raw messages that could contain editor links or secrets.
+    const cause = error instanceof GronaError ? error.toJSON() : undefined;
+    const progress = { campaignId: readiness.data.campaign.id, completedSteps: ['read_campaign', 'verify_campaign_page'], attemptedStep: 'set_live' };
+    if (error instanceof GronaError && ([400, 401, 403, 404, 409, 429].includes(error.status) || error.code === 'missing_credentials')) {
+      throw new WorkflowError(error.code, error.message, { ...cause, ...progress, cause });
+    }
+    throw new WorkflowError('launch_outcome_uncertain', 'Launch request failed; status may have changed. Read the campaign by immutable id before retrying.', { ...progress, ...(cause ? { cause } : {}), recovery: 'Read current campaign status before retrying the mutation.' });
+  }
   return { ...result, campaignId: readiness.data.campaign.id, verifiedPageUrl: readiness.data.pageUrl, completedSteps: ['read_campaign', 'verify_campaign_page', 'set_live'], note: 'Allow propagation time before visitors see changes.' };
 }
 export async function setAbSplit(client: WorkflowClient, input: z.infer<typeof abSplitSchema>) {
@@ -92,7 +101,10 @@ function identityMismatches(c: Campaign, request: CreateCampaignRequest): string
   const requested = new URL(request.url), actualPage = originalPage(c);
   if (!actualPage) differences.push('url (no comparable page)');
   else { const actual = new URL(actualPage); if (actual.origin !== requested.origin || actual.pathname !== requested.pathname) differences.push('url');
-    if ((request.type ?? 'general') === 'abTest' && (request.pageTargeting ?? 'specific') === 'specific' && (requested.search || requested.hash)) differences.push('url query/fragment cannot be verified from API preview links'); }
+    // Specific A/B targeting includes the original exact URL. Reads omit that
+    // URL and preview query parameters are undocumented: even a queryless new
+    // request cannot prove the existing campaign had no original query.
+    if ((request.type ?? 'general') === 'abTest' && (request.pageTargeting ?? 'specific') === 'specific') differences.push('original specific A/B URL cannot be verified from API preview links'); }
   if ((request.pageTargeting ?? 'specific') === 'multiple') {
     if (c.slug !== request.slug) differences.push('slug'); if (c.condition !== (request.condition ?? 'included')) differences.push('condition');
     if (JSON.stringify([...new Set(request.list?.map(v => v.trim()) ?? [])].sort()) !== JSON.stringify([...new Set(c.list ?? [])].sort())) differences.push('list');
