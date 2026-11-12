@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "grona": {
+      "command": "node",
+      "args": ["/absolute/path/to/grona-mcp/dist/index.js"],
+      "env": {
+        "GRONA_API_KEY": "SET_VIA_YOUR_CLIENT_SECRET_CONFIGURATION",
+        "GRONA_MOBILE_API_KEY": "OPTIONAL_SEPARATE_MOBILE_SECRET"
+      }
+    }
+  }
+}

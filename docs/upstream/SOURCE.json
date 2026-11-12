@@ -1,0 +1,19 @@
+{
+  "capturedAt": "2026-11-12",
+  "openapiSource": "https://developer.grona.ai/openapi/grona-api.yaml",
+  "overviewSource": "https://developer.grona.ai/api/",
+  "openapiSha256": "1b5adace1f618a1ccab0453b1fd5b658922dc6cbaf041df8ac8936be5113cf04",
+  "guideSources": [
+    "https://developer.grona.ai/api/authentication/",
+    "https://developer.grona.ai/api/conventions/",
+    "https://developer.grona.ai/api/create-campaigns/",
+    "https://developer.grona.ai/api/errors/",
+    "https://developer.grona.ai/api/install-the-snippet/",
+    "https://developer.grona.ai/api/mobile-grants/",
+    "https://developer.grona.ai/api/verify-installations/",
+    "https://developer.grona.ai/api/versioning/",
+    "https://developer.grona.ai/api/visual-editor-links/",
+    "https://developer.grona.ai/get-started/quickstart-api/"
+  ],
+  "note": "Reference material owned by Grona; snapshot version 1.0.0, OpenAPI 3.1.0."
+}

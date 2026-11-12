@@ -1,8 +1,6 @@
-# DR index (one line each; the detail is in DECISIONS.md)
+# Decision index
 
-> foundry-protocol template. Agents read **this** index and open `DECISIONS.md` only for
-> the DRs that their WO cites: it is minimal context (`LESSONS.md` #23). Each new DR
-> adds one line here, in the same commit in which it is written. On a merge, conflicts
-> in this file are additions only: keep both versions.
-
-- DR-01: `<short title>` (`<YYYY-MM-DD>`)
+- DR-01: Official SDK v2, TypeScript, Node 22.12+ and stdio (2026-11-12).
+- DR-02: Faithful API contracts, isolated mobile credentials and safe retries (2026-11-12).
+- DR-03: Foundry workorders with autonomous local execution (2026-11-12).
+- DR-04: Captured official contract and generated reference verification (2026-11-12).

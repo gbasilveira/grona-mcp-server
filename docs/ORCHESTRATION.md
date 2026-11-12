@@ -48,9 +48,9 @@ credentials in fixtures. One agent per WO; at most two concurrent executors.
 
 | WO | Title | Phase | Status | Agent | Depends on |
 |---|---|---|---|---|---|
-| 001 | Typed API client and validation | P1 | READY | client | — |
-| 002 | MCP tools and agent workflows | P1 | READY | server | 001 interface |
-| 003 | Documentation and independent verification | P1 | DRAFT | root | 001, 002 |
+| 001 | Typed API client and validation | P1 | IN PROGRESS | client | — |
+| 002 | MCP tools and agent workflows | P1 | IN PROGRESS | server | 001 interface |
+| 003 | Documentation and independent verification | P1 | IN PROGRESS | root | 001, 002 |
 
 ### 4.1 — Gate queue
 
