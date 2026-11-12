@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Original authors and maintainers: αIAt (https://aiat.pt) and Guilherme da Silveira (gbasilveira@gmail.com).
-# License: MIT — see LICENSE-MIT at the repository root.
+# License: GPL-3.0-or-later — see LICENSE at the repository root.
 # Human validation gates (foundry-protocol, docs/gates/, ORCHESTRATION.md §2.3).
 # Usage: scripts/gate.sh status | report NN [--verify] | pr NN | close NN
 #   status       gate queue (§4.1)

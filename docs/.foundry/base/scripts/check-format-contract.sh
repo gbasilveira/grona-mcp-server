@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Original authors and maintainers: αIAt (https://aiat.pt) and Guilherme da Silveira (gbasilveira@gmail.com).
-# License: MIT — see LICENSE at the repository root.
+# License: GPL-3.0-or-later — see LICENSE at the repository root.
 # Usage: scripts/check-format-contract.sh
 # Checks the shapes listed in docs/FORMAT-CONTRACT.md (foundry-protocol).
 # Exits with 1 on any violation; differences between header and queue are only warnings.

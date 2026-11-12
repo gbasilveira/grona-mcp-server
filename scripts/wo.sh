@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Original authors and maintainers: αIAt (https://aiat.pt) and Guilherme da Silveira (gbasilveira@gmail.com).
-# License: MIT — see LICENSE-MIT at the repository root.
+# License: GPL-3.0-or-later — see LICENSE at the repository root.
 # Usage: scripts/wo.sh status [NNN] | resume NNN | next
 # State lives in the repo: any session/account resumes from here (foundry-protocol, docs/RESUME.md).
 set -euo pipefail

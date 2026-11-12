@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Original authors and maintainers: αIAt (https://aiat.pt) and Guilherme da Silveira (gbasilveira@gmail.com).
-# License: MIT — see LICENSE-MIT at the repository root.
+# License: GPL-3.0-or-later — see LICENSE at the repository root.
 """Orchestrator hook (foundry-protocol): records ALL operations (Agent, SendMessage, Bash,
 ScheduleWakeup, AskUserQuestion, end of sub-agents, user messages) in
 docs/orchestration-log/raw/AAAA-MM-DD.jsonl (local, git-ignored). Never fails the tool."""
