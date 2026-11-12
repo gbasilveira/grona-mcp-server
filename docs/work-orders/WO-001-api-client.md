@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Phase | P1 |
-| Status | IN REVIEW |
+| Status | ACCEPTED |
 | Depends on | — |
 | Branch | `wo/001-client` |
 
@@ -93,3 +93,5 @@ server, workflows, package or root documentation files were changed.
 
 Follow-up: root runs integrated MCP protocol and packaging checks under WO-003.
 
+
+Independent review: root reran the 77 tests successfully and inspected route, auth, retry, response and schema implementations; accepted 2026-11-12.

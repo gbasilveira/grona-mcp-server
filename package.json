@@ -4,10 +4,32 @@
   "description": "Complete Grona API MCP server with agent workflows",
   "type": "module",
   "license": "MIT",
-  "engines": {"node": ">=22.12.0"},
-  "bin": {"grona-mcp": "dist/index.js"},
-  "exports": {".": "./dist/server.js", "./client": "./dist/client.js"},
-  "files": ["dist", "docs/upstream/grona-api.yaml", "README.md", "docs/API.md", "docs/AGENT-GUIDE.md"],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "bin": {
+    "grona-mcp": "dist/index.js"
+  },
+  "exports": {
+    ".": "./dist/server.js",
+    "./client": "./dist/client.js",
+    "./config": "./dist/config.js",
+    "./schemas": "./dist/schemas.js",
+    "./workflows": "./dist/workflows.js",
+    "./types": "./dist/types.js"
+  },
+  "files": [
+    "dist",
+    "docs/upstream/grona-api.yaml",
+    "README.md",
+    "docs/API.md",
+    "docs/AGENT-GUIDE.md",
+    "docs/OPERATIONS.md",
+    "docs/DEVELOPMENT.md",
+    "examples",
+    ".env.example",
+    "docs/MCP-SCHEMAS.json"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -20,6 +42,19 @@
     "docs:check": "tsx scripts/generate-api-docs.ts --check",
     "prepack": "npm run build"
   },
-  "dependencies": {"@modelcontextprotocol/server": "2.4.0", "zod": "4.6.7", "yaml": "2.9.0"},
-  "devDependencies": {"@modelcontextprotocol/client": "2.4.0", "@types/node": "26.6.6", "typescript": "7.0.2", "tsx": "4.22.4", "vitest": "5.1.0", "@vitest/coverage-v8": "5.1.0"}
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "tsx": "4.22.4",
+    "vitest": "5.1.0",
+    "@vitest/coverage-v8": "5.1.0",
+    "yaml": "2.9.0"
+  },
+  "main": "./dist/server.js",
+  "types": "./dist/server.d.ts"
 }

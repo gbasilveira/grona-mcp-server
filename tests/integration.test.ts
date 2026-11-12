@@ -133,3 +133,23 @@ describe('actual stdio CLI and HTTP contract',()=>{
     expect(stderr).not.toContain('mobile-test-secret');
   });
 });
+
+describe('offline startup',()=>{
+  it('discovers and uses local capabilities without any credentials',async()=>{
+    const entry=process.env.GRONA_TEST_ENTRY ?? 'src/index.ts';
+    const offlineTransport=new StdioClientTransport({command:process.execPath,args:entry.endsWith('.ts') ? ['--import','tsx',resolve(entry)] : [resolve(entry)],cwd:process.cwd(),env:{},stderr:'pipe'});
+    const offline=new Client({name:'offline-integration',version:'1.0.0'});
+    try {
+      await offline.connect(offlineTransport);
+      const config=await offline.callTool({name:'grona_configuration',arguments:{}});
+      expect(config.structuredContent).toHaveProperty('data.embedCredentialConfigured',false);
+      expect(config.structuredContent).toHaveProperty('data.mobileCredentialConfigured',false);
+      const snippet=await offline.callTool({name:'grona_generate_snippet',arguments:{workspaceId:'workspace_1'}});
+      expect(snippet.isError).not.toBe(true);
+      expect(snippet.structuredContent).toHaveProperty('data.html');
+      const missing=await offline.callTool({name:'grona_list_campaigns',arguments:{}});
+      expect(missing.isError).toBe(true);
+      expect(missing.structuredContent).toHaveProperty('error.code','missing_credentials');
+    } finally {await offline.close();}
+  },30000);
+});
